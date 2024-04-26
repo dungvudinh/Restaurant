@@ -17,3 +17,33 @@
     border-radius: 20px;
     padding:10px;
 }
+
+.table-list_item.selected 
+{
+    background-color: #0066CC !important;
+}
+
+.MuiList-root
+{
+    font-size: 10px;
+}
+
+.form-group 
+{
+    position:relative;
+    border:1px dotted var(--primary);
+    padding:25px;
+    text-align: center;
+    border-radius: 10px;
+    font-size: 14px;
+    p 
+    {
+        color:var(--primary);
+    }
+    span 
+    {
+        font-weight:600;
+        font-size: 12px;
+    }
+}
+

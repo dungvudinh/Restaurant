@@ -8,15 +8,29 @@ import { pink } from '@mui/material/colors';
 import {ArrowForward, EditCalendar} from '@mui/icons-material';
 import {Grid,Box, FormGroup, FormControlLabel, Checkbox, Button, Stack} from '@mui/material';
 import CustomizedDialog from "../../components/Dialog";
-
+import * as XLSX from 'xlsx/xlsx.mjs';
 const cx = classNames.bind(styles);
-
+function createData(  id, timein, client, phone, quantity, room, status, note) {
+    return { id, timein, client, phone, quantity, room, status, note };
+  }
+  
+  const rows = [
+    createData('DB001','20/04/2024 8:30', 'Vũ Đình Dũng', '0355969145', 4, 6,1, 'Khách đến muộn 30p'),
+    createData('DB002', '20/04/2024 8:30', 'Lê Tuấn Kiệt','0355969145', 4, 6, 1,'Khách đến muộn 30p'),
+  ];
 
 function Reception() {
     const [openDialog, setOpenDialog] = useState(false);
 
     const handleOpenDialog = ()=>setOpenDialog(true);
     const handleCloseDialog = ()=>setOpenDialog(false);
+    const handleExportFile = ()=>
+    {
+        var wb = XLSX.utils.book_new();
+        var ws = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb,ws,'BaoCaoDatBan');
+        XLSX.writeFile(wb, "baoCaoDatBan.xlsx");
+    }
     return ( 
         <Fragment>
 
@@ -41,7 +55,7 @@ function Reception() {
                             </div>
 
                             <Stack spacing={2} direction="row">
-                                <Button variant="outlined" size="small" sx={{fontSize:'12px'}}>
+                                <Button variant="outlined" size="small" sx={{fontSize:'12px'}} onClick={handleExportFile}>
                                     <ArrowForward fontSize="small" sx={{marginRight:'5px'}}/>
                                     Xuất file
                                 </Button>

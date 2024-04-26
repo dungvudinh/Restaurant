@@ -1,0 +1,13 @@
+.info-client_item 
+{
+    margin-bottom:20px;
+    .MuiGrid-item
+    {
+        display: flex;
+        align-items:flex-end;
+    }
+    input 
+    {
+        font-size: 14px;
+    }
+}

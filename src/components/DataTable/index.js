@@ -13,17 +13,7 @@ function createData(  id, timein, client, phone, quantity, room, status, note) {
 
 const rows = [
   createData('DB001','20/04/2024 8:30', 'Vũ Đình Dũng', '0355969145', 4, 6,1, 'Khách đến muộn 30p'),
-  createData('DB002', 'Ice cream sandwich', 237, 9.0, 37, 4.3, 2, ''),
-  createData('DB003', 'Eclair', 262, 16.0, 24, 6.0, 3, ''),
-  createData('DB004','Cupcake', 305, 3.7, 67, 4.3, 4, ''),
-  createData('DB005','Gingerbread', 356, 16.0, 49, 3.9, 1,''),
-  createData('DB005','Gingerbread', 356, 16.0, 49, 3.9, 1,''),
-  createData('DB005','Gingerbread', 356, 16.0, 49, 3.9, 1,''),
-  createData('DB005','Gingerbread', 356, 16.0, 49, 3.9, 1,''),
-  createData('DB005','Gingerbread', 356, 16.0, 49, 3.9, 1,''),
-  createData('DB005','Gingerbread', 356, 16.0, 49, 3.9, 1,''),
-  createData('DB005','Gingerbread', 356, 16.0, 49, 3.9, 1,''),
-
+  createData('DB002', '20/04/2024 8:30', 'Lê Tuấn Kiệt','0355969145', 4, 6, 1,'Khách đến muộn 30p'),
 ];
 const StyledTableRow = styled(TableRow)(({ theme }) => ({
   '&:nth-of-type(odd)': {

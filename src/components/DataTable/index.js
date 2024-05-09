@@ -1,12 +1,14 @@
-import { useState, useMemo,Fragment } from 'react';
+import { useState, useMemo,Fragment, useEffect } from 'react';
+import axios from 'axios';
 import {Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
 Checkbox,Box, TablePagination, TableSortLabel,
 IconButton,
 Tooltip} from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { Circle, DriveFileRenameOutline, NoteAlt, Done, Delete, DeleteOutline, EditLocation } from '@mui/icons-material';
-import Dialog from '../Dialog';
+import UpdateBooking from '../UpdateBooking';
 import CancelBookingDialog from '../CancelBookingDialog';
+import { useStore, actions } from '../../store';
 function createData(  id, timein, client, phone, quantity, room, status, note) {
   return { id, timein, client, phone, quantity, room, status, note };
 }
@@ -45,6 +47,11 @@ const styledStatus = (id)=>
       styledStatus.statusColor = "#0066CC";
     }
     else if(id ===4)
+      {
+        styledStatus.title = "Quá giờ/không đến";
+        styledStatus.statusColor = "#EF3C4D";
+      }
+    else if(id ===5)
       {
         styledStatus.title = "Đã hủy";
         styledStatus.statusColor = "#EF3C4D";
@@ -85,7 +92,7 @@ const headCells = [
   {
     id:7, 
     title: 'Phòng/Bàn', 
-    minWidth:100
+    minWidth:200
   }, 
   {
     id:8, 
@@ -99,7 +106,7 @@ const headCells = [
   }, 
 ]
 
-var actions = [
+var colActions = [
   {
     id:1, 
     title: 'Nhận bàn', 
@@ -134,7 +141,8 @@ var actions = [
   }
 ]
 
-export default function DenseTable() {
+export default function DenseTable({tableStatus}) {
+  const [state, dispatch] = useStore();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [order, setOrder] = useState('asc');
@@ -142,7 +150,26 @@ export default function DenseTable() {
   const [selected, setSelected] = useState([]);
   const [isOpenDialog, setOpenDialog] = useState(false);
   const [isOpenCancelBookingDialog, setOpenCancelBookingDialog]  = useState(false);
-  const [currentUpdateData, setCurrentUpdateData] = useState({});
+  const [currentUpdateData, setCurrentUpdateData] = useState(null);
+  const [currentCancelData, setCurrentCancelData] = useState(null);
+  const {listBooking, booking_code, table_id, timeline} = state;
+  console.log(listBooking)
+  useEffect(()=>
+    {
+      axios.get(`http://localhost:4049/api/booking`, {
+        params: {
+          booking_code, 
+          status : tableStatus, 
+          table_id, 
+          timeline
+        }
+      })
+      .then(response=>{
+        dispatch(actions.setListBooking(response.data))
+        dispatch(actions.setStatus(tableStatus))
+      })
+      // dispatch(actions.filterBooking())
+    }, [tableStatus.waiting, tableStatus.accepted, tableStatus.sorted, tableStatus.canceled])
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -150,14 +177,14 @@ export default function DenseTable() {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-    const emptyRows =page > 0 ? Math.max(0, (1 + page) * rowsPerPage - rows.length) : 0;
+    // const emptyRows =page > 0 ? Math.max(0, (1 + page) * rowsPerPage - rows.length) : 0;
     const visibleRows =useMemo(
       () =>
-        stableSort(rows, getComparator(order, orderBy)).slice(
+        stableSort(listBooking, getComparator(order, orderBy)).slice(
           page * rowsPerPage,
           page * rowsPerPage + rowsPerPage,
         ),
-      [order, orderBy, page, rowsPerPage],
+      [order, orderBy, page, rowsPerPage, listBooking],
     )
     const isSelected = (id) => selected.indexOf(id) !== -1;
     const handleSelectAllClick = (event) => {
@@ -197,30 +224,25 @@ export default function DenseTable() {
       <Box sx={{ width: '100%' }}>
         <Paper  sx={{ width: '100%', mb: 2 }}>
           <TableContainer>
-            <Table sx={{ minWidth: 750 }} size="medium" aria-label="a dense table"  >
+            <Table sx={{ minWidth: 750, fontSize:14 }} size="medium" aria-label="a dense table"  >
               <EnhancedTableHead numSelected={selected.length}
                 order={order}
                 orderBy={orderBy}
                 onSelectAllClick={handleSelectAllClick}
-                rowCount={rows.length}/>
+                rowCount={listBooking.length}/>
               <TableBody>
-                {visibleRows.map((row, index) => {
+                {visibleRows.length > 0 && visibleRows.map((row, index) => {
                   const isItemSelected = isSelected(row.id);
+                
                   return (
                   <TableRow
                     key={index} hover 
                     sx={{ '&:last-child td, &:last-child th': { border: 0 }, height:'53' }}
                   >
-                    <TableCell padding="checkbox">
-                      <Checkbox color="primary" checked={isItemSelected} 
-                      onClick={(event) => handleClick(event, row.id)}
-                      inputProps={{
-                        'aria-label': 'select all desserts',
-                      }}/>
-                    </TableCell>
-                    <TableCell align="left">
-                      {actions.reduce((arr, action)=>{
-                        if(action.useForStatusIds.includes(row.status))
+                    
+                    <TableCell align="left" >
+                      {colActions.reduce((arr, action)=>{
+                        if(action.useForStatusIds.includes(row.booking_status))
                           return [...arr, action];
                         else 
                           return arr;
@@ -230,26 +252,44 @@ export default function DenseTable() {
                             <IconButton size={action.fontSize} sx={{color:action.color}} 
                             onClick={()=>{
                               if(action.id ===3)
+                              {
                                 handleOpenDialog(action.id)
+                                setCurrentUpdateData(row);
+                              }
                               else if(action.id === 4)
-                                setOpenCancelBookingDialog(true);
+                                {
+                                  setOpenCancelBookingDialog(true);
+                                  setCurrentCancelData(row);
+                                }
                             }}>
                               {action.icon}
                             </IconButton>
                       </Tooltip>
                       ))}
                     </TableCell>
-                    <TableCell component="th" scope="row" sx={{color:'#0066CC'}}>{row.id}</TableCell>
-                    <TableCell align="left">{row.timein}</TableCell>
-                    <TableCell align="left">{row.client}</TableCell>
-                    <TableCell align="left">{row.phone}</TableCell>
-                    <TableCell align="left">{row.quantity}</TableCell>
-                    <TableCell align="left">{row.room}</TableCell>
+                    <TableCell component="th" scope="row" sx={{color:'#0066CC'}} >{row.booking_code}</TableCell>
+                    <TableCell align="left" >{row.booking_time}</TableCell>
+                    <TableCell align="left" >{row.full_name}</TableCell>
+                    <TableCell align="left" >{row.phone_number}</TableCell>
+                    <TableCell align="left" >{row.client_quantity}</TableCell>
                     <TableCell align="left">
-                      <Circle fontSize='small' sx={{width:'10px', height:'10px', marginRight:'5px', color:styledStatus(row.status).statusColor}} />
-                      {styledStatus(row.status).title}
+                    {row.table  != null
+                    ? 
+                      row.table.map((item, idx)=>(
+                        <>
+                          <span key={idx} style={{marginBottom:'5px'}}>{item.name}</span> 
+                          {idx === row.table.length  -1 ? '' : ' / '}
+                        </>
+                       ))
+                    : 
+                      ''
+                    }
                     </TableCell>
-                    <TableCell align="left">{row.note}</TableCell>
+                    <TableCell align="left">
+                      <Circle fontSize='small' sx={{width:'10px', height:'10px', marginRight:'5px', color:styledStatus(row.booking_status).statusColor}} />
+                      {styledStatus(row.booking_status).title}
+                    </TableCell>
+                    <TableCell align="left">{row.booking_note}</TableCell>
                   </TableRow>)
                 })}
               </TableBody>
@@ -257,7 +297,7 @@ export default function DenseTable() {
           </TableContainer>
           <TablePagination rowsPerPageOptions={[5, 10, 25]}
               component="div"
-              count={rows.length}
+              count={listBooking.length}
               rowsPerPage={rowsPerPage}
               page={page}
               onPageChange={handleChangePage}
@@ -265,8 +305,9 @@ export default function DenseTable() {
         </Paper>
 
       </Box>
-      <Dialog onCloseDialog={handleCloseDialog} isOpenDialog={isOpenDialog} />
-      <CancelBookingDialog isOpenDialog={isOpenCancelBookingDialog} onCloseDialog={()=>setOpenCancelBookingDialog(false)}/>
+      
+      {isOpenDialog && <UpdateBooking onCloseDialog={handleCloseDialog} isOpenDialog={isOpenDialog} data={currentUpdateData}/> }
+      {isOpenCancelBookingDialog && <CancelBookingDialog isOpenDialog={isOpenCancelBookingDialog} onCloseDialog={()=>setOpenCancelBookingDialog(false)} data={currentCancelData}/>}
     </Fragment>
   );
 }
@@ -275,7 +316,7 @@ function EnhancedTableHead(props) {
   return (
     <TableHead>
       <StyledTableRow>
-        <TableCell padding="checkbox">
+        {/* <TableCell padding="checkbox">
           <Checkbox
             color="primary"
             indeterminate={numSelected > 0 && numSelected < rowCount}
@@ -285,9 +326,9 @@ function EnhancedTableHead(props) {
               'aria-label': 'select all desserts',
             }}
           />
-        </TableCell>
+        </TableCell> */}
         {headCells.map(cell=>(
-          <TableCell key={cell.id} align="left" style={{ minWidth: cell.minWidth}}>{cell.title}</TableCell>
+          <TableCell key={cell.id} align="left" style={{ minWidth: cell.minWidth, fontSize:14}}>{cell.title}</TableCell>
         ))}
       </StyledTableRow>
     </TableHead>

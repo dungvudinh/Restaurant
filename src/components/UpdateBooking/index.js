@@ -8,21 +8,17 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
-import { Grid, Input, OutlinedInput, Stack, List, ListItem, TextField, Select, MenuItem,
- Autocomplete, Link, Backdrop, CircularProgress, 
- ListItemText} from '@mui/material';
-import {Add, Block, EmojiPeople, EscalatorWarning, Mode, Save, Search } from '@mui/icons-material';
+import { Grid, Input, Stack, List, ListItem, TextField, Select, MenuItem,
+ Autocomplete, Link, Backdrop, CircularProgress} from '@mui/material';
+import {Add, Block, DeleteOutlineOutlined, EmojiPeople, EscalatorWarning, Mode, Save, Search } from '@mui/icons-material';
 import { LocalizationProvider, DesktopDateTimePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import dayjs from 'dayjs';
-import classNames from 'classnames/bind';
-import styles from './Dialog.module.scss';
 import DialogSecond from '../DialogSecond';
 import NewClientDialog from '../NewClientDialog';
 import CustomAlert from '../CustomAlert';
+import { parse } from 'date-fns';
 import { useStore, actions } from '../../store';
-const cx = classNames.bind(styles)
-
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     '& .MuiDialogContent-root': {
       padding: theme.spacing(2),
@@ -31,12 +27,8 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
       padding: theme.spacing(1),
     },
   }));
-  function generateRandomCode(id) {
-    let invoiceCode = String(id).padStart(6, '0');
-    return `DB${invoiceCode}`;
-  }
-  
-function CustomizedDialog({onCloseDialog, isOpenDialog}) {
+
+function CustomizedDialog({onCloseDialog, isOpenDialog , data}) {
     const [state, dispatch] = useStore();
     const [openEmptyTable, setOpenEmptyTable] = useState(false);
     const handleOpenEmptyTableDialog = ()=>setOpenEmptyTable(true);
@@ -48,56 +40,77 @@ function CustomizedDialog({onCloseDialog, isOpenDialog}) {
     const [listClientResult, setListClientResult] = useState([]);
     const [openSearchResult, setOpenSearchResult] = useState(false);
     const [isLoading, setLoading]= useState(false);
-    const [showAlert, setShowAlert] = useState();
+    const [showAlert, setShowAlert] = useState(false);
     const [alertMessage, setAlertMessage] = useState({});
-    const [bookingCode, setBookingCode] = useState('');
-    const [newBooking, setNewBooking] = useState({
-        client_id:'', 
-        booking_date:`${new Date().getFullYear()}-${String(new Date().getMonth() +1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`,                                 
-        booking_time:`${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}:00`, 
-        period_time:1, 
-        time_unit:'giờ', 
-        adult_quantity:1, 
-        children_quantity: 0, 
-        tables:[], 
-        booking_note:''
+    const [dateTimeFormat, setDateTimeFormat] = useState(()=>{
+        return parse(`${data.booking_date} ${data.booking_time}`, 'yyyy-MM-dd HH:mm:ss', new Date());
     })
-    useEffect(()=>{
-        axios.get('http://localhost:4049/api/booking/last_id')
-        .then((res)=>{
-            setBookingCode(generateRandomCode(res.data.id))
-        })
-      }, [])
-      useEffect(()=>{
-        if(bookingCode !== null)
-            setNewBooking(prev=>({...prev, 'booking_code' : bookingCode}))
-      }, [bookingCode])
+    const [newBooking, setNewBooking] = useState({
+        client_id:data.client_id, 
+        booking_code:data.booking_code, 
+        booking_date: data.booking_date, 
+        booking_time:data.booking_time, 
+        period_time:data.period_time, 
+        time_unit:data.time_unit, 
+        adult_quantity:data.adult_quantity, 
+        children_quantity: data.children_quantity, 
+        tables: data.table_id !== null ? data.table.map((tableItem, index)=>({id:data.table_id[index], name: tableItem.name, status: tableItem.status})) : [], 
+        booking_note:data.booking_note
+    })
     useEffect(()=>{
         axios.get(`http://localhost:4049/api/table`)
         .then(response=>setListTable(response.data.map(data=>({id: data.id,name: data.name, status:data.status}))))
     }, [])
-    const handleAddBooking = async ()=>
+    const handleDeleteBooking = async ()=>
+        {
+            try 
+            {
+                const result = await axios.delete(`http://localhost:4049/api/booking/delete`, {data:{booking_code: data.booking_code}});
+                const newListBooking = await axios.get('http://localhost:4049/api/booking');
+                if(result.data.status === 'success')
+                    dispatch(actions.setListBooking(newListBooking.data));
+                setAlertMessage({status:result.data.status, message: result.data.message});
+                setShowAlert(true);
+            }
+            catch(error)
+            {
+                setAlertMessage({status:'error', message: error.message});
+                setShowAlert(true);
+            }
+            finally
+            {
+                setTimeout(()=>
+                {
+                    setLoading(false)
+                    onCloseDialog();
+                }, 1000)
+            }
+            
+        }
+    const handleUpdateBooking = async ()=>
     {
         try 
         {
-            const result = await axios.post(`http://localhost:4049/api/booking/new`, newBooking);
+            console.log(newBooking);
+            const result = await axios.put(`http://localhost:4049/api/booking/update`, newBooking);
             const newListBooking = await axios.get('http://localhost:4049/api/booking');
             if(result.data.status === 'success')
-            {
                 dispatch(actions.setListBooking(newListBooking.data));
-            }
             setAlertMessage({status:result.data.status, message: result.data.message});
             setShowAlert(true);
         }
         catch(error)
         {
-            setAlertMessage({status:'error', message: error});
+            setAlertMessage({status:'error', message: error.message});
             setShowAlert(true);
         }
         finally
         {
-            setLoading(false)
-            onCloseDialog();
+            setTimeout(()=>
+            {
+                setLoading(false)
+                onCloseDialog();
+            }, 1000)
         }
         
     }
@@ -151,7 +164,7 @@ function CustomizedDialog({onCloseDialog, isOpenDialog}) {
                 maxWidth="md"
                 >
                 <DialogTitle sx={{ m: 0, p: 2 }} id="customized-dialog-title">
-                    Thêm mới đặt bàn
+                    {data.full_name}
                 </DialogTitle>
                 <IconButton
                 aria-label="close"
@@ -176,8 +189,8 @@ function CustomizedDialog({onCloseDialog, isOpenDialog}) {
                                                 <h4 style={{marginRight:'20px', fontWeight:'600'}}>Khách hàng</h4>
                                             </Grid>
                                             <Grid item xs={8} sx={{display:'flex', flexDirection:'row', alignItems:'center'}}>
-                                              
                                                 <Autocomplete  options={listClientResult} 
+                                                defaultValue={{ full_name: data.full_name, client_code: data.client_code }} 
                                                 getOptionLabel={(option)=>`${option.full_name} - ${option.client_code}`}
                                                 open={openSearchResult}
                                                 renderInput={(params)=>(
@@ -186,7 +199,7 @@ function CustomizedDialog({onCloseDialog, isOpenDialog}) {
                                                         <TextField {...params} variant="filled" size='small' name='tables'
                                                         sx={{'input':{padding:0}, '.MuiInputBase-root':{backgroundColor:'transparent'}, width:'100%', 
                                                         'input':{fontSize:'14px'}}} placeholder='Tìm khách hàng'
-                                                        onInput={(e)=>setSearchClient(e.target.value)} />
+                                                        onInput={(e)=>setSearchClient(e.target.value)} value={data.full_name}/>
                                                         <IconButton sx={{backgroundColor:"#fff"}} size="small" onClick={()=>setNewClientDialog(true)}><Add fontSize='small'/></IconButton>
                                                     </Stack>
                                                 )}
@@ -211,7 +224,7 @@ function CustomizedDialog({onCloseDialog, isOpenDialog}) {
                                             </Grid>
                                             <Grid item xs={8} >
                                                 <Input fullWidth={true} placeholder='Mã tự động' size='small' sx={{fontSize:'14px'}}
-                                                name='booking_code' readOnly value={bookingCode}/>
+                                                name='booking_code' readOnly value={data.booking_code}/>
                                             </Grid>
                                         </Grid>
                                     </ListItem>
@@ -226,9 +239,12 @@ function CustomizedDialog({onCloseDialog, isOpenDialog}) {
                                                     <DesktopDateTimePicker size="small" 
                                                     sx={{'input':{fontSize:'14px'}, 'svg':{fontSize:'20px'}}}
                                                     slotProps={{textField:{size:'small', fullWidth:true, variant:'standard'}}}
-                                                    defaultValue={dayjs(new Date())} format='DD/MM/YY h:m' onChange={(value)=>handleChangeInput('booking_date', value)}/>
+                                                    format='DD/MM/YY h:m' onChange={(value)=>handleChangeInput('booking_date', value)}
+                                                    value={dayjs(dateTimeFormat)}/>
+                                                   
                                                 </LocalizationProvider>
                                             </Grid>
+                                            
                                         </Grid>
                                     </ListItem>
 
@@ -240,14 +256,15 @@ function CustomizedDialog({onCloseDialog, isOpenDialog}) {
                                             <Grid item xs={8}>
                                                 <Grid container sx={{display:'flex', justifyContent:'flex-start'}}>
                                                     <Grid item xs={4}>
-                                                        <Select defaultValue={'giờ'} size="small" sx={{fontSize:"14px", width:'80px', height:'30px'}} 
+                                                        <Select defaultValue={data.time_unit} size="small" sx={{fontSize:"14px", width:'80px', height:'30px'}} 
                                                         onChange={(e)=>handleChangeInput(e.target.name, e.target.value)} name='time_unit'>
                                                             <MenuItem value="giờ" sx={{fontSize:14}}>Giờ</MenuItem>
                                                             <MenuItem value="phút"  sx={{fontSize:14}}>Phút</MenuItem>
                                                         </Select>
                                                     </Grid>
                                                     <Grid item xs={3} sx={{marginLeft:'10px'}}>
-                                                        <Input name='period_time' onChange={e=>handleChangeInput(e.target.name, e.target.value)} sx={{fontSize:14}} defaultValue={1}/>
+                                                        <Input name='period_time' onChange={e=>handleChangeInput(e.target.name, e.target.value)} sx={{fontSize:14}}
+                                                        defaultValue={data.period_time}/>
                                                     </Grid>
                                                 </Grid>
                                             </Grid>
@@ -269,7 +286,7 @@ function CustomizedDialog({onCloseDialog, isOpenDialog}) {
                                                                 Người lớn
                                                             </p>
                                                             <Input  sx={{width:'40px', fontSize:14}} name='adult_quantity' onChange={(e)=>handleChangeInput(e.target.name, e.target.value)}
-                                                            defaultValue={1}/>
+                                                            defaultValue={data.adult_quantity}/>
                                                         </Stack>
                                                     </Grid>
                                                     <Grid item xs={6}>
@@ -278,7 +295,8 @@ function CustomizedDialog({onCloseDialog, isOpenDialog}) {
                                                                 <EscalatorWarning />
                                                                 Trẻ em
                                                             </p>
-                                                            <Input sx={{width:'40px', fontSize:14}} name="children_quantity" onChange={(e)=>handleChangeInput(e.target.name, e.target.value)}/>
+                                                            <Input sx={{width:'40px', fontSize:14}} name="children_quantity" onChange={(e)=>handleChangeInput(e.target.name, e.target.value)}
+                                                            defaultValue={data.children_quantity}/>
                                                         </Stack>
                                                     </Grid>
 
@@ -315,7 +333,8 @@ function CustomizedDialog({onCloseDialog, isOpenDialog}) {
                                     <ListItem sx={{marginBottom:"15px", padding:0}} >
                                        <Input sx={{width:'100%', fontSize:'14px'}} placeholder='Ghi chú' 
                                        startAdornment={<Mode fontSize='small' sx={{marginRight:'10px', color:'#85888c'}} />} size='small'
-                                       name='booking_note' onChange={(e)=>handleChangeInput(e.target.name,e.target.value )}/>
+                                       name='booking_note' onChange={(e)=>handleChangeInput(e.target.name,e.target.value )}
+                                       defaultValue={data.booking_note}/>
                                     </ListItem>
                                 </List>
                             </Grid>
@@ -325,10 +344,15 @@ function CustomizedDialog({onCloseDialog, isOpenDialog}) {
                 </DialogContent>
 
                 <DialogActions>
-                    <Button autoFocus onClick={handleAddBooking} variant='contained' fontSize="15px" size='small' 
+                    <Button autoFocus onClick={handleDeleteBooking} variant='contained' fontSize="15px" size='small' color='error'
+                        sx={{display:'flex', alignItems:'center'}}>
+                        <DeleteOutlineOutlined fontSize='small' sx={{marginRight:'5px'}}/>
+                        <p style={{marginTop:'3px'}}>Xóa</p>
+                    </Button>
+                    <Button autoFocus onClick={handleUpdateBooking} variant='contained' fontSize="15px" size='small' 
                     sx={{display:'flex', alignItems:'center'}}>
                         <Save fontSize='small' sx={{marginRight:'5px'}}/>
-                        <p style={{marginTop:'3px'}}>Lưu</p>
+                        <p style={{marginTop:'3px'}}>Cập nhập</p>
                     </Button>
                     <Button autoFocus onClick={onCloseDialog} variant='outlined' fontSize="15px" size="small">
                         <Block fontSize='small' sx={{marginRight:'5px'}}/>

@@ -5,7 +5,7 @@ import App from './App';
 import GlobalStyles from './components/GlobalStyles';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { viVN } from '@mui/material/locale';
-
+import {StoreProvider} from './store';
 const theme = createTheme(
   {
     palette: {
@@ -16,14 +16,14 @@ const theme = createTheme(
 );
 
 
-
-
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <GlobalStyles>
     <ThemeProvider theme={theme}>
+      <StoreProvider>
         <App />
+      </StoreProvider>
     </ThemeProvider>
     </GlobalStyles>
   </React.StrictMode>

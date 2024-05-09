@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import classNames from "classnames/bind";
 import styles from './DialogSecond.module.scss';
 import { DialogTitle, Dialog, DialogContent,Typography, DialogActions, Button, IconButton,
 Tab, Box, Tabs, Stack } from "@mui/material";
 import {Close, TableBar, TaskAlt, Block} from "@mui/icons-material";
 import { styled } from '@mui/material/styles';
+import axios from "axios";
 
 const cx = classNames.bind(styles);
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -15,39 +16,40 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
       padding: theme.spacing(1),
     },
   }));
-const tables = [
-    {
-        name:'Bàn số 1', 
-        quantity: 4
-    }, 
-    {
-        name:'Bàn số 2', 
-        quantity: 6
-    }
-]
-function DialogSecond({onCloseDialogSec, openDialogSec}) {
-    const [value, setValue] = useState(0);
-    const [currentSelectedIndex, setCurrentSelectedIndex] = useState();
-    const handleChange = (event, newValue) => {
-        setValue(newValue);
-    };
 
-    const handleClick = (e)=>
+function DialogSecond({onCloseDialogSec, openDialogSec, dataSelectedId, onChangeInput}) {
+    const [currentArea, setCurrentArea] = useState(0);
+    const [listTableSelected, setListTableSelected] = useState([]);
+    const [listArea, setListArea] = useState([]);
+    const [listTable, setListTable] = useState([]);
+    useEffect(()=>
     {
-        const currentElm = e.currentTarget;
-        currentElm.classList.toggle('selected');
-        if(currentElm.classList.contains('selected'))
+        axios.get('http://localhost:4049/api/area')
+        .then(response=>setListArea(response.data))
+    }, [])
+
+    useEffect(()=>{
+        axios.get(`http://localhost:4049/api/table?area_id=${currentArea+1}`)
+        .then(response=>setListTable(response.data))
+    }, [currentArea])
+    useEffect(()=>{
+        setListTableSelected(dataSelectedId);
+    }, [dataSelectedId.length])
+    
+    const handleChangeArea = (event, newValue) =>setCurrentArea(newValue);
+    const handleSelectIndex = ({id, name})=>
         {
-            currentElm.style.backgroundColor = "#0066CC";
-            currentElm.style.color = '#fff';
+            if(listTableSelected.some(table=>table.id === id))
+                setListTableSelected(prev=>prev.filter(table=>table.id !== id))
+            else 
+                setListTableSelected(prev=>[...prev, {id, name}])
         }
-        else 
-        {
-            currentElm.style.backgroundColor = "#fff";
-            currentElm.style.color = '#0066CC';
-        }
+    const handleSaveChosen = ()=>{
+        onChangeInput('tables',listTableSelected);
+        onCloseDialogSec();
     }
 
+    
     return (
         <BootstrapDialog
         onClose={onCloseDialogSec}
@@ -74,48 +76,45 @@ function DialogSecond({onCloseDialogSec, openDialogSec}) {
             <DialogContent dividers >
                 <div className={cx('content-header')}>
                     <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                        <Tabs value={value} onChange={handleChange} aria-label="basic tabs example" sx={{'button':{fontSize:'12px'}}}>
-                            <Tab label="Tất cả" {...a11yProps(0)} />
-                            <Tab label="Tầng 1" {...a11yProps(1)} />
-                            <Tab label="Tầng 2" {...a11yProps(2)} />
+                        <Tabs value={currentArea} onChange={handleChangeArea} aria-label="basic tabs example" sx={{'button':{fontSize:'12px'}}}>
+                            {listArea.length > 0 && listArea.map(area=>(
+                                <Tab label={area.name} {...a11yProps(area.area_id)} key={area.id}/>
+                            ))}
                         </Tabs>
                     </Box>
                 </div>
                 <div className="content-container">
-                    <CustomTabPanel value={value} index={0}>
-                        <Stack  spacing={{ xs: 1, sm: 2 }} direction="row" useFlexGap flexWrap="wrap">
-                            {tables.map((table, index)=>(
-                                <Button key={index} variant="outlined" size="small" sx={{padding:'10px 20px',  display:'flex', flexDirection:'column'}} 
-                                onClick={handleClick} className={cx('table-btn')}>
-                                    <p style={{fontSize:'12px'}}>{table.name}</p>
-                                    <span style={{display:'flex', flexDirection:'row', alignItems:'center'}}>
-                                        <TableBar />
-                                        <p>{table.quantity}</p>
-                                    </span>
-                                </Button>
-                            ))}
-                        </Stack>
-                       
-                       
-                    </CustomTabPanel>
-                    <CustomTabPanel value={value} index={1}>
-                        Item Two
-                    </CustomTabPanel>
-                    <CustomTabPanel value={value} index={2}>
-                        Item Three
-                    </CustomTabPanel>
+                    {listArea.length > 0 && listArea.map(area=>(
+                        <CustomTabPanel value={currentArea} index={area.area_id - 1} key={area.id}   >
+                            <Stack  direction="row" flexWrap="wrap" spacing={2}>
+                                {listTable.length > 0 && listTable.map((table,  index)=>(
+                                    <Button key={table.id} variant="outlined" size="small" sx={{padding:'10px 20px',  display:'flex', flexDirection:'column'}} 
+                                    disabled={table.status === 1}
+                                        onClick={()=>handleSelectIndex({id:table.id, name:table.name, status: table.status})} className={cx('table-btn', {selected: listTableSelected.some(item=>item.id === table.id)})}>
+                                            <p style={{fontSize:'12px'}}>{table.name}</p>
+                                            <span style={{display:'flex', flexDirection:'row', alignItems:'center'}}>
+                                                <TableBar />
+                                                <p>{table.chair_quantity}</p>
+                                            </span>
+                                    </Button>
+                                ))}
+                            </Stack>
+                        </CustomTabPanel>
+                    ))}
+                    
+                    
                 </div>
             </DialogContent>
             <DialogActions>
-            <Button autoFocus onClick={onCloseDialogSec} variant='contained' fontSize="15px" size='small' 
-                    sx={{display:'flex', alignItems:'center'}}>
-                        <TaskAlt fontSize='small' sx={{marginRight:'5px'}}/>
-                        <p style={{marginTop:'3px'}}>chọn</p>
-                    </Button>
-                    <Button autoFocus onClick={onCloseDialogSec} variant='outlined' fontSize="15px" size="small">
-                        <Block fontSize='small' sx={{marginRight:'5px'}}/>
-                        <p style={{marginTop:'3px'}}>bỏ qua</p>
-                    </Button>
+                <Button autoFocus onClick={handleSaveChosen} variant='contained' fontSize="15px" size='small' 
+                sx={{display:'flex', alignItems:'center'}}>
+                    <TaskAlt fontSize='small' sx={{marginRight:'5px'}}/>
+                    <p style={{marginTop:'3px'}}>chọn</p>
+                </Button>
+                <Button autoFocus onClick={onCloseDialogSec} variant='outlined' fontSize="15px" size="small">
+                    <Block fontSize='small' sx={{marginRight:'5px'}}/>
+                    <p style={{marginTop:'3px'}}>bỏ qua</p>
+                </Button>
             </DialogActions>
         </BootstrapDialog>
      );
@@ -123,14 +122,13 @@ function DialogSecond({onCloseDialogSec, openDialogSec}) {
 
 function CustomTabPanel(props) {
     const { children, value, index, ...other } = props;
-  
     return (
       <div
         role="tabpanel"
         hidden={value !== index}
         id={`simple-tabpanel-${index}`}
         aria-labelledby={`simple-tab-${index}`}
-        {...other}
+        style={{display:'flex', flexDirection:'row', flexWrap:'wrap'}}
       >
         {value === index && (
           <Box sx={{ p: 3 }}>

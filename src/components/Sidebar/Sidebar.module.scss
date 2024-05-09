@@ -5,7 +5,6 @@
     border-right: 2px solid #d3d3d3;
     // background-color:#e5effa;
     min-height: 100%;
-    padding:10px 10px;
     
 }
 
@@ -13,12 +12,18 @@
 {
     text-align:left;
     margin-bottom: 20px;
+    background-color: #00408c;
+    padding:10px 20px;
+    font-size: 18px;
+    color:#fff;
 }
 
 .sidebar-item 
 {
     text-align:left;
     margin-bottom:20px;
+    padding:10px 30px;
+    font-size: 10px;
 }
 .sidebar-item_search 
 {
@@ -26,7 +31,7 @@
     {
         font-weight: 600;
         margin-bottom:10px;
-        font-size: 15px;
+        font-size: 14px;
     }
     .input-wrapper
     {

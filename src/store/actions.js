@@ -1,7 +1,8 @@
 import { FILTER_BOOKING_BY_CODE, FILTER_BOOKING_BY_TABLE, SET_BOOKING_CODE, SET_LIST_BOOKING, UPDATE_LIST_BOOKING, SET_TABLE_ID, 
 FILTER_BOOKING_BY_STATUS, FILTER_BOOKING, SET_STATUS, 
 SET_TIMELINE,SET_LIST_MENU, 
-SET_LIST_TABLE} from "./constants";
+SET_LIST_TABLE,
+SET_LIST_ORDER} from "./constants";
 export const updateListBooking = payload =>({type:UPDATE_LIST_BOOKING, payload})
 export const setListBooking = payload =>({type:SET_LIST_BOOKING, payload})
 export const filterBookingByCode = ()=>({type:FILTER_BOOKING_BY_CODE})
@@ -14,3 +15,4 @@ export const setStatus = (statusObj)=>({type:SET_STATUS, payload:statusObj})
 export const setTimeline = (name, checked)=>({type:SET_TIMELINE, payload:{name, checked}})
 export const setListTable = (payload)=>({type:SET_LIST_TABLE, payload})
 export const setListMenu = (payload) =>({type:SET_LIST_MENU, payload})
+export const setListOrder = (payload) =>({type:SET_LIST_ORDER, payload})

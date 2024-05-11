@@ -22,76 +22,14 @@ import PaymentPDF from '../../components/paymentPDF';
 import { useReactToPrint as UseReactToPrint } from 'react-to-print';
 import { useStore, actions } from '../../store';
 import CustomAlert from '../../components/CustomAlert';
+import CustomTabContent from '../../components/CustomTabContent';
+
 const cx  = classNames.bind(styles);
 
-
-
-
-
-const tabs =[
-  {
-    id:0,
-    label: 'Hóa đơn 1', 
-    content: {
-      client: 'Vũ Đình Dũng', 
-      tableId: 1, 
-      quantity:4, 
-      order:[
-        {
-          id:0, 
-          name: "Bún đậu mắm tôm", 
-          note: 'đi kèm nước mắm', 
-          price: 35000
-        }
-      ]
-    }
-  }
-]
-const menuOrderList = [
-  {
-    id:1, 
-    name:'Bún đậu mắm tôm', 
-    note:"dùng nước mắm ADSFJKHASDKJFHGASDKFLJASD FKJHASDKJFHASDKFLASDGBHXZCNMVB", 
-    quantity:2, 
-    price:35000
-  }, 
-  {
-    id:2, 
-    name:'Bún bò huế', 
-    note:"Nhiều nước dùng", 
-    quantity:2, 
-    price:45000
-  }, 
-  {
-    id:3, 
-    name:'Bún bò huế', 
-    note:"Nhiều nước dùng", 
-    quantity:2, 
-    price:45000
-  }, 
-  {
-    id:4, 
-    name:'Bún bò huế', 
-    note:"Nhiều nước dùng", 
-    quantity:2, 
-    price:45000
-  }, 
-  {
-    id:5, 
-    name:'Bún bò huế', 
-    note:"Nhiều nước dùng", 
-    quantity:2, 
-    price:45000
-  }, 
-  {
-    id:6, 
-    name:'Bún bò huế', 
-    note:"Nhiều nước dùng", 
-    quantity:2, 
-    price:45000
-  }
-]
-
+function generateRandomCode(id) {
+  let invoiceCode = String(id).padStart(6, '0');
+  return `HD${invoiceCode}`;
+}
 
 function Cashier() {
     const [state, dispatch] = useStore();
@@ -103,25 +41,40 @@ function Cashier() {
     const [openSearch, setOpenSearch] = useState(false);
     const [titleSearchPop, setTitleSearchPop] = useState('');
     const [typeSearch, setTypeSearch] = useState(null);
+    const [alertMessage, setAlertMessage] = useState({status:'', message:''});
+    const [showAlert, setShowAlert] = useState(false);
     const [currentSelectedTable, setSelectedTable] = useState({
       tableId: null, 
+      tableName: '', 
       area: null
     });
     const [openNoteDialog, setOpenNoteDialog] = useState(false);
     const [openNewItemDialog, setOpenNewItemDialog] = useState(false);
-    const [rightTab, setRightTab] = useState(0);
-    const [tabList, setTabList] = useState(tabs);
-    const {listTable, listMenu} = state;
+    const [currentOrderTab, setCurrentOrderTab] = useState(0);
+    const {listTable, listMenu, listOrder} = state;
     const [currentNote, setCurrentNote] = useState({
       type: '', 
       id: null, 
       note: ''
     })
-    
     const [newClientDialog, setNewClientDialog] = useState(false);
-
     const [openPaymentDialog, setOpenPaymentDialog] = useState(false);
-    const inputRef = useRef();
+    const [currentOrderMenu, setCurrentOrderMenu] = useState([]);
+    const [currentOrderId, setCurrentOrderId] = useState(null);
+    const [newOrder, setNewOrder] = useState({
+      order_code: '', 
+      client_id: null, 
+      client_quantity:1, 
+      employee_id:1, 
+      order_note: '',
+      order_menu: [], 
+      table_id: null, 
+      area:null, 
+      booking_code:null , 
+      id: null, 
+      table_name: '', 
+      note:''
+    })
     useEffect(()=>{
       if(tabValue === 0)
       {
@@ -139,7 +92,26 @@ function Cashier() {
       .then(res=>setListArea(res.data))
       axios.get('http://localhost:4049/api/menu_group')
       .then(res=>setListMenuGroup(res.data))
+      axios.get('http://localhost:4049/api/order')
+      .then(res=>{
+        var newListOrder;
+        if(typeof listOrder === 'bject')
+          newListOrder = [res.data];
+        else 
+          newListOrder = res.data
+        if(newListOrder.length > 0 )
+          setCurrentOrderMenu(newListOrder[currentOrderTab].order_menu);
+        else 
+          setCurrentOrderMenu([]);
+        dispatch(actions.setListOrder(newListOrder))
+      })
+      axios.get('http://localhost:4049/api/order/last_id')
+      .then(res=>setCurrentOrderId(res.data.id))
     }, [])
+    useEffect(()=>{
+        if(listOrder.length > 0 )
+          setCurrentOrderMenu(listOrder[currentOrderTab].order_menu)
+    }, [currentOrderTab])
     
     const handleSearchRoom = ()=>
     {
@@ -155,27 +127,37 @@ function Cashier() {
     }
     const handleAddNewTab = ()=>
     {
-      var lastTab = tabList[tabList.length -1 >=0 ? tabList.length -1 : 0];
-      var newTab = {
-        id:lastTab.id +1, 
-        label:`hóa đơn ${lastTab.id + 2}`, 
-        content:{}
-      }
-      setTabList([...tabList, newTab]);
+      const newOrderId = currentOrderId +1;
+      const newOrderCode = generateRandomCode(newOrderId);
+      setCurrentOrderTab(listOrder.length);
+      setCurrentOrderId(newOrderId);
+      setCurrentOrderMenu([])
+      setNewOrder(prevOrder=>({...prevOrder, order_code: newOrderCode}))
+      // setListOrder(prevList=>[...prevList, {...newOrder, order_code: newOrderCode,  id:newOrderId}]);
+      dispatch(actions.setListOrder([...listOrder, {...newOrder, order_code: newOrderCode}]))
     }
-    const handleCancelTab = (id)=>
+    const handleCancelTab = (e, index, order)=>
     {
-      var newTabList = tabList.filter(prevTab=>prevTab.id !== id);
-      if(newTabList.length === 0)
-      {
-        var newTab = {
-          id:0, 
-          label:`hóa đơn 1`, 
-          content:{}
-        }
-        newTabList.push(newTab);
-      }
-      setTabList(newTabList);
+      e.stopPropagation();
+      //delete order dựa vào table id 
+      
+      //trả lại trạng thái bàn 
+      const newListOrder = [...listOrder];
+      newListOrder.splice(index, 1);
+      // setListOrder(newListOrder);
+      dispatch(actions.setListOrder(newListOrder))
+      if(newListOrder.length === 0)
+        handleAddNewTab();
+      if(index < currentOrderTab)
+        setCurrentOrderTab(index);
+      else if(index > currentOrderTab)
+        setCurrentOrderTab(index -1);
+      else 
+        setCurrentOrderTab(()=> index -1  < 0 ? 0 : (index -1));
+        axios.delete('http://localhost:4049/api/order/delete', {data:{order_id:order.id}})
+      listOrder.splice(index, 1);
+      dispatch(actions.setListOrder(listOrder));
+        
     }
     const handleToggleNoteDialog = (e, type, id, note)=>
     {
@@ -188,6 +170,75 @@ function Cashier() {
       })
       
     }
+    const handleSelectedTable = (table)=>
+      {
+        setSelectedTable({tableId: table.id, area:table.area, tableName:table.name})
+        // không cho phép đổi bàn khi đã chọn món
+        console.log(listOrder[currentOrderTab])
+        if(table.status !== 1){
+          if(listOrder[currentOrderTab].order_menu.length > 0){
+            if(listOrder[currentOrderTab].table_id !== null){
+              setShowAlert(true)
+              setAlertMessage({status:'error', message:'Không cho phép đổi bàn khi đã chọn món'})
+            }
+            else{
+              console.log('clicked')
+              axios.put('http://localhost:4049/api/table/update-status', {table_id: table.id, status: 1});
+              const newLisTable = listTable.map(tableItem=>{
+                if(tableItem.id ===  table.id)
+                  tableItem.status = 1;
+                return tableItem;
+              })
+              dispatch(actions.setListTable(newLisTable));
+              listOrder[currentOrderTab].table_id = table.id;
+              listOrder[currentOrderTab].area = table.area;
+              listOrder[currentOrderTab].table_name = table.name;
+              axios.put('http://localhost:4049/api/order/update-other', listOrder[currentOrderTab])
+            }
+          }
+          
+          else{
+
+            listOrder[currentOrderTab].table_id = table.id;
+            listOrder[currentOrderTab].area = table.area;
+            listOrder[currentOrderTab].table_name = table.name;
+          }
+          dispatch(actions.setListOrder(listOrder))
+        }
+        else 
+        {
+          setShowAlert(true)
+          setAlertMessage({status:'error', message:'Không cho phép chọn bàn đang có khách ngồi'})
+        }
+      }
+      console.log(listOrder[currentOrderTab])
+    const handleSelectMenu = (menu)=>{
+      //check xem đã chọn bàn chưa, nếu rồi thì update trạng thái bàn
+      if(listOrder[currentOrderTab].table_id !== null){
+        const newListTable = listTable.map(tableItem=>{
+          if(tableItem.id === listOrder[currentOrderTab].table_id)
+            tableItem.status = 1;                      
+          return tableItem;
+        })
+        dispatch(actions.setListTable(newListTable))
+      }
+      //nếu đã chọn trùng, tăng số lượng sản phẩm lên 1 
+      var updateCurrentOrderMenu = [...currentOrderMenu];
+      if(updateCurrentOrderMenu.some(orderMenu=>orderMenu.order_menu_id === menu.id)){
+        updateCurrentOrderMenu =  updateCurrentOrderMenu.map(orderMenu=>{
+          if(orderMenu.order_menu_id === menu.id)
+            orderMenu.order_menu_quantity = orderMenu.order_menu_quantity  +1;
+          return orderMenu;
+        })
+      }
+      else {
+        updateCurrentOrderMenu.push({order_menu_id:menu.id, order_menu_name: menu.name, order_menu_note: '', order_menu_price:menu.price, order_menu_quantity:1}); 
+      }
+      listOrder[currentOrderTab].order_menu = updateCurrentOrderMenu;
+      dispatch(actions.setListOrder(listOrder))
+      setCurrentOrderMenu(updateCurrentOrderMenu)
+    }
+   
     return ( 
       <Fragment>
           <div className={cx('wrapper')}>
@@ -226,8 +277,8 @@ function Cashier() {
                                           return (
                                           <button key={index}
                                           style={{fontSize:'12px', padding:'20px', display:'flex', flexDirection:'column', 
-                                          backgroundColor:table.status && '#c2e0ff', border:"none", borderRadius:'10px', alignItems:'center'}}
-                                          onClick={()=>setSelectedTable({tableId: table.id, area:table.area})} className={cx('table-list_item', {selected: table.id === currentSelectedTable.tableId})}>
+                                          backgroundColor:table.status === 1 &&  '#c2e0ff', border:"none", borderRadius:'10px', alignItems:'center'}}
+                                          onClick={()=>handleSelectedTable(table)} className={cx('table-list_item', {selected: table.id === currentSelectedTable.tableId})}>
                                             <span style={{marginBottom:'10px'}}>
                                               <TableIcon color={(table.id === currentSelectedTable.tableId  && table.area === currentSelectedTable.area) ?  "#fff" : (table.status ? '#0066CC' : '#002F66')}/>
                                             </span>
@@ -281,7 +332,7 @@ function Cashier() {
                                   <Grid item xs={12} sx={{overflow:'auto', height:'490px'}}>
                                     {listMenuGroup.length > 0 && listMenuGroup.map(menu_group=>(
 
-                                    <TabContent value={menuGroup} index={menu_group.id} id={`menu-tab-${menu_group.id}`}>
+                                    <TabContent value={menuGroup} index={menu_group.id} id={`menu-tab-${menu_group.id}`} key={menu_group.id}>
                                       <Stack spacing={2} useFlexGap={true} direction="row" flexWrap="wrap"> 
                                       {listMenu.reduce((newMenus, menu)=>{
                                         if(menu.is_active) return [...newMenus, menu];
@@ -289,7 +340,7 @@ function Cashier() {
                                       }, [])
                                       .map(menu=>(
                                           <Button sx={{fontSize:"10px", display:'flex', flexDirection:'column', padding:0, width:'22.5%', height:'180px'}} 
-                                          variant='outlined' size="small" key={menu.id}
+                                          variant='outlined' size="small" key={menu.id} onClick={()=>handleSelectMenu(menu)}
                                           >
                                             <div style={{ backgroundColor:'#e6f0fa', width:'100%', position:'relative', height:'120px'}}>
                                               {menu.image_url !==  null 
@@ -331,19 +382,18 @@ function Cashier() {
                       <Stack direction="row" justifyContent="flex-start" alignItems='center'>
                         <Box sx={{ maxWidth: { xs: 320, sm: 500 }, bgcolor: 'background.paper' }}>
                           <Tabs
-                            value={rightTab}
-                            onChange={(e, newValue)=>setRightTab(newValue)}
+                            value={currentOrderTab}
+                            onChange={(e, newValue)=>{setCurrentOrderTab(newValue)}}
                             variant="scrollable"
                             scrollButtons="auto"
                             aria-label="scrollable auto tabs example"
                             sx={{'button': {fontSize:'12px'}, '.MuiBox-root':{padding:0}}} 
                           >
-
-                            {tabList.map(tab=>(
-                                <Tab  id='order-tab-0' aria-controls='order-tabpanel-0' 
-                                label={<p style={{display:'flex', alignItems:'center'}}>{tab.label} 
-                                 <Close fontSize="small" onClick={()=>handleCancelTab(tab.id)} sx={{color:'#111', marginLeft:'5px'}}/></p>} 
-                                  key={tab.id}/>
+                            {listOrder.map((order, index)=>(
+                                <Tab key={order.id}  id={`order-tab-${index}`} aria-controls={`order-tabpanel-${index}`} 
+                                label={<p style={{display:'flex', alignItems:'center'}}>{order.order_code} 
+                                 <Close fontSize="small" onClick={(e)=>handleCancelTab(e, index, order)} sx={{color:'#111', marginLeft:'5px'}}/></p>} 
+                                  value={index}/>
                             ))}
                           </Tabs>
                         </Box>
@@ -353,94 +403,29 @@ function Cashier() {
                         </Button>
                       </Stack>
                       {/* TAB CONTENT */}
-                      <TabContent value={rightTab} index={0} id="order-tab-0">
-                        <Stack>
-                          <Grid container>
-                            <Grid item xs={4}>
-                                <Button variant="outlined" sx={{fontSize:'11px', borderRadius:'20px', cursor:'pointer'}}size="small" >
-                                  <TableBar sx={{marginRight:'5px'}} fontSize="small"/>
-                                  <p >Bàn số 3/Tầng 1</p>
-                                </Button>
-                            </Grid>
-                            <Grid item xs={4} sx={{position:'relative'}}>
-                              <OutlinedInput  size="small" 
-                                sx={{borderRadius:'50px', backgroundColor:'#fff', paddingLeft:'7px', 
-                                paddingRight:'7px', fontSize:'13px', width:'100%', 'input':{padding:'5px 0'}}} 
-                                startAdornment={<Search color='primary' fontSize='small' sx={{marginRight:'10px'}}/>} 
-                                endAdornment={<IconButton sx={{backgroundColor:"#fff"}} size="small" onClick={()=>setNewClientDialog(true)}><Add fontSize='small'/></IconButton>}
-                                placeholder='Tìm khách hàng'  ref={inputRef}/>
-                                <div style={{position:'absolute', width:'250px', backgroundColor:'white',
-                                 borderRadius:'8px', maxHeight:'250px', boxShadow:'0 5px 8px rgba(0, 0, 0, 0.35)', overflow:'auto', zIndex:'10'}}>
-                                  <List>
-                                    <ListItem disablePadding sx={{fontSize:'10px'}}>
-                                      <ListItemButton >
-                                          <ListItemIcon>
-                                           <AccountCircleOutlined />
-                                          </ListItemIcon>
-                                          <ListItemText primary="Vũ Đình Dũng"  secondary={<p>KH0001<br/>0869370492</p>}
-                                          sx={{'.MuiListItemText-primary ':{fontSize:'14px',fontWeight:'600'},
-                                           '.MuiListItemText-secondary ':{fontSize:'12px'}}}/>
-                                      </ListItemButton>
-                                    </ListItem>
-                                    
-                                  </List>
-                                </div>
-                            </Grid>
-                          </Grid>
-                        </Stack>
-                        {/* DANH SÁCH MÓN ĂN ĐÃ CHỌN */}  
-                        <List sx={{width:'100%', marginTop:'10px', height:'400px', overflow:'auto'}}>
-                          {menuOrderList.map((order)=>(
-                            <ListItem key={order.id} disablePadding sx={{borderRadius:'10px', border:'1px solid transparent', 
-                            boxShadow:'0px 4px 10px rgba(0, 0, 0, 0.1)', padding:'10px', 
-                            '.MuiListItemText-primary ':{fontSize:'14px',fontWeight:'600'}, '.MuiListItemText-secondary':{fontSize:'13px'}}}>
-                                <ListItemIcon>
-                                  <IconButton size='small'>
-                                    <DeleteOutlineOutlined fontSize="small"/>
-                                  </IconButton>
-                                </ListItemIcon>
-                                <ListItemText primary={order.name} 
-                                secondary={<span style={{display:'flex', alignItems:'center'}}><ContentPaste sx={{marginRight:'5px'}} fontSize="small"/>
-                                <span style={{maxWidth:'100px', textOverflow:'ellipsis', overflow:'hidden', whiteSpace:'nowrap', cursor:'pointer'}}
-                                onClick={(e)=>handleToggleNoteDialog(e,  'menu', order.id)}>
-                                  {order.note || 'Nhập ghi chú món'}
-                                  </span></span>}/>
-                                <ListItemText primary={
-                                  <Stack direction="row" spacing={2} alignItems="center">
-                                    <IconButton size="small" sx={{border:'1px solid black'}}>
-                                      <Add fontSize="small"/>
-                                    </IconButton>
-                                      <span>{order.quantity}</span>
-                                    <IconButton size="small" sx={{border:'1px solid black'}}>
-                                      <Remove fontSize="small"/>
-                                    </IconButton>
-                                  </Stack>
-                                  }
-                                  />
-                                <ListItemText primary={
-                                  <span>{order.price}đ</span>
-                                }/>
-                            </ListItem>
-                          ))}
-                          
-                        </List>
-                      </TabContent>
-                      
+                      {listOrder.map((order, index)=>(
+                        <CustomTabContent order={order} currentOrderTab={currentOrderTab} id={index} key={index} onToggleNoteDialog={handleToggleNoteDialog}/>
+                      ))}
+
                       <div style={{width:'100%', backgroundColor:'#e6f0fa', height:'100px', borderRadius:'20px', padding:'10px'}}>
                         <Stack direction="row" sx={{width:'100%'}}>
                           <Grid container spacing={1}>
                             <Grid item xs={3}>
                               <Select
-                                value=""
+                                
                                 // onChange={handleChange}
                                 displayEmpty
                                 inputProps={{ 'aria-label': 'Without label' }}
                                 sx={{width:'100%', fontSize:'13px', '.MuiSelect-select':{padding:'7px 10px'},
                                 borderRadius:'20px', bgcolor:'#dde7f1', 'fieldset':{border:0}}}
                                 size='small'
+                                defaultValue={1}
                               >
-                                <MenuItem value="" >
+                                <MenuItem value={1} sx={{fontSize:'13px'}}>
                                   <em>Vũ Đình Dũng</em>
+                                </MenuItem>
+                                <MenuItem value={2} sx={{fontSize:'13px'}}>
+                                  <em>Lê Tuấn Kiệt</em>
                                 </MenuItem>
                                 {/* <MenuItem value={10}>Lê Tuấn Kiệt</MenuItem>
                                 <MenuItem value={20}>Twenty</MenuItem>
@@ -485,6 +470,7 @@ function Cashier() {
           <NoteDialog openDialog={openNoteDialog} onCloseDialog={()=>setOpenNoteDialog(false)} data={currentNote} setCurrentNote={setCurrentNote}/>
           <NewItemDialog openDialog={openNewItemDialog} onCloseDialog={()=>setOpenNewItemDialog(false)}/>
           <NewClientDialog openClientDialog={newClientDialog} onCloseClientDialog={()=>setNewClientDialog(false)}/>
+          {showAlert && <CustomAlert alert={alertMessage} open={showAlert} onClose={()=>setShowAlert(false)}/>}
           {/* <PaymentDialog openDialog={openPaymentDialog} onCloseDialog={()=>setOpenPaymentDialog(false)}/> */}
       </Fragment>
      );
@@ -521,7 +507,6 @@ function SearchPopup({openSearch, onCloseSearch, title, type, setSelectedTable, 
   const [listResult, setListResult] = useState([]);
   const [showAlert, setShowAlert] = useState();
   const [alertMessage, setAlertMessage] = useState({});
-  console.log(type)
   const handleListItemClick = (event, id, status, table_name ,area) => {
     setSelectedIndex(id);
     if(status === 1)
@@ -536,6 +521,7 @@ function SearchPopup({openSearch, onCloseSearch, title, type, setSelectedTable, 
       {
         setSelectedTable({
           tableId:id, 
+          tableName: table_name, 
           area 
         });
         setAreaTab(area);
@@ -564,7 +550,6 @@ function SearchPopup({openSearch, onCloseSearch, title, type, setSelectedTable, 
       }
      
   }, [searchValue])
-  console.log(listResult)
   return (
     <Fragment>
       <Dialog
@@ -687,27 +672,16 @@ function SearchPopup({openSearch, onCloseSearch, title, type, setSelectedTable, 
 
 function NoteDialog({openDialog, onCloseDialog, data, setCurrentNote})
 {
-  // useEffect(()=>{
-  //   if(id !== null) 
-  //   {
-  //     if(type === 'table')
-  //       setNoteItem(tables.find(table=>table.id === id));
-  //     else if(type ==='menu')
-  //       setNoteItem(menuOrderList.find(order=>order.id ===id));
-  //   }
-  //   else 
-  //   {
-  //     if(type === "order")
-  //     {
-
-  //     }
-  //   }
-  // },[])
   const [state, dispatch] = useStore();
   const [showAlert, setShowAlert] = useState();
   const [alertMessage, setAlertMessage] = useState({});
-  
-  const handleChangeNote = (e)=> setCurrentNote(prev=>({...prev, note:e.target.value}))
+  const handleChangeNote = (e)=>{
+    if(data.type !== 'order_menu'){
+      setCurrentNote(prev=>({...prev, note:e.target.value}))
+    }
+    else 
+      setCurrentNote(prev=>({...prev, note:{order_menu_id:data.note.order_menu_id, order_menu_note: e.target.value}}))
+  }
   const handleSaveNote = async ()=>{
     try 
     {
@@ -723,6 +697,24 @@ function NoteDialog({openDialog, onCloseDialog, data, setCurrentNote})
             setAlertMessage({status:result.data.status, message: result.data.message});
             setShowAlert(true);
         }
+      else if(data.type === "order_menu"){
+        const result = await axios.put(`http://localhost:4049/api/order/update`, 
+          {
+            order_id: data.id, 
+            order_menu: {
+              order_menu_id: data.note.order_menu_id, 
+              order_menu_note: data.note.order_menu_note
+            }
+          }  
+      )
+        if(result.data.status === 'success')
+        {
+            const newListOrder = await axios.get('http://localhost:4049/api/order');
+            dispatch(actions.setListOrder(newListOrder.data));
+        }
+        setAlertMessage({status:result.data.status, message: result.data.message});
+        setShowAlert(true);
+      }
     }
     catch(error)
     {
@@ -747,7 +739,7 @@ function NoteDialog({openDialog, onCloseDialog, data, setCurrentNote})
       >
         <DialogTitle fontSize="17px">Ghi chú phòng/bàn</DialogTitle>
         <DialogContent>
-         <Input fullWidth={true} startAdornment={<BorderColorOutlined fontSize='small'/>}  onChange={handleChangeNote} value={data.note}/>
+         <Input fullWidth={true} startAdornment={<BorderColorOutlined fontSize='small'/>}  onChange={handleChangeNote} value={data.type === 'order_menu' ? data.note.order_menu_note : data.note}/>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleSaveNote} variant="contained" color="primary" size="small">

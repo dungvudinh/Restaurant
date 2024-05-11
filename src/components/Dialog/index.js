@@ -65,7 +65,7 @@ function CustomizedDialog({onCloseDialog, isOpenDialog}) {
     useEffect(()=>{
         axios.get('http://localhost:4049/api/booking/last_id')
         .then((res)=>{
-            setBookingCode(generateRandomCode(res.data.id))
+            setBookingCode(generateRandomCode(res.data.id +1))
         })
       }, [])
       useEffect(()=>{

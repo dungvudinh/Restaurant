@@ -12,3 +12,4 @@ export const SET_TIMELINE = 'set_timeline';
 //cashier 
 export const SET_LIST_TABLE = 'set_list_table'
 export const SET_LIST_MENU = 'set_list_menu';
+export const SET_LIST_ORDER = 'set_list_order';

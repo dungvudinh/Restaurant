@@ -26,7 +26,7 @@ function generateRandomCode(id) {
   return `KH${invoiceCode}`;
 }
 
-function NewClientDialog({openClientDialog, onCloseClientDialog}) {
+function NewClientDialog({openClientDialog, onCloseClientDialog, setCurrentSelectedCient}) {
   const [isUploadImage, setIsUploadImage]  =  useState(false);
   const [imgURL, setImgUrl] = useState(null);
   // const [clientCode, setClientCode] = useState('');
@@ -49,7 +49,7 @@ function NewClientDialog({openClientDialog, onCloseClientDialog}) {
   useEffect(()=>{
     axios.get('http://localhost:4049/api/client/last_id')
     .then((res)=>{
-      setClientCode(generateRandomCode(res.data.id))
+      setClientCode(generateRandomCode(res.data.id +1))
     })
   }, [])
   useEffect(()=>{
@@ -112,6 +112,13 @@ function NewClientDialog({openClientDialog, onCloseClientDialog}) {
             'Content-Type': 'multipart/form-data'
           }
         })
+        if(result.data.status === 'success')
+        {
+          if(setCurrentSelectedCient){
+            setCurrentSelectedCient(result.data.data);
+          }
+        }
+        
           setAlertMessage({status:result.data.status, message: result.data.message});
           setShowAlert(true);
       }

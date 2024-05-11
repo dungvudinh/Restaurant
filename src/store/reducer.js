@@ -1,9 +1,9 @@
-import { UPDATE_LIST_BOOKING, SET_LIST_BOOKING, FILTER_BOOKING_BY_CODE,  FILTER_BOOKING_BY_TABLE,
- SET_BOOKING_CODE, SET_TABLE_ID, FILTER_BOOKING_BY_STATUS, FILTER_BOOKING, SET_STATUS, SET_TIMELINE, SET_LIST_TABLE, SET_LIST_MENU } from "./constants";
+import { SET_LIST_BOOKING,SET_BOOKING_CODE, SET_TABLE_ID, SET_STATUS, SET_TIMELINE, SET_LIST_TABLE, SET_LIST_MENU, SET_LIST_ORDER } from "./constants";
 const initState = {
     listBooking:[], 
     listTable: [], 
     listMenu: [], 
+    listOrder:[], 
     listBookingStorage:[], 
     booking_code: '', 
     table_id: [], 
@@ -41,6 +41,8 @@ function reducer(state, action)
             return {...state, listTable:action.payload} 
         case SET_LIST_MENU: 
             return {...state, listMenu:action.payload}
+        case SET_LIST_ORDER: 
+            return {...state, listOrder: action.payload}
         default: 
             throw new Error('Invalid action')
     }

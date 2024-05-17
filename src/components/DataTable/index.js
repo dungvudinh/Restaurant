@@ -9,6 +9,7 @@ import { Circle, DriveFileRenameOutline, NoteAlt, Done, Delete, DeleteOutline, E
 import UpdateBooking from '../UpdateBooking';
 import CancelBookingDialog from '../CancelBookingDialog';
 import { useStore, actions } from '../../store';
+import { useNavigate } from 'react-router-dom';
 function createData(  id, timein, client, phone, quantity, room, status, note) {
   return { id, timein, client, phone, quantity, room, status, note };
 }
@@ -140,7 +141,10 @@ var colActions = [
     useForStatusIds: [1,2, 3, 4]
   }
 ]
-
+function generateRandomCode(id) {
+  let invoiceCode = String(id).padStart(6, '0');
+  return `HD${invoiceCode}`;
+}
 export default function DenseTable({tableStatus}) {
   const [state, dispatch] = useStore();
   const [page, setPage] = useState(0);
@@ -153,7 +157,8 @@ export default function DenseTable({tableStatus}) {
   const [currentUpdateData, setCurrentUpdateData] = useState(null);
   const [currentCancelData, setCurrentCancelData] = useState(null);
   const {listBooking, booking_code, table_id, timeline} = state;
-  console.log(listBooking)
+  const [currentOrderId, setCurrentOrderId] = useState(null);
+  const navigate  =useNavigate();
   useEffect(()=>
     {
       axios.get(`http://localhost:4049/api/booking`, {
@@ -166,10 +171,15 @@ export default function DenseTable({tableStatus}) {
       })
       .then(response=>{
         dispatch(actions.setListBooking(response.data))
-        dispatch(actions.setStatus(tableStatus))
+        
       })
+      dispatch(actions.setStatus(tableStatus))
       // dispatch(actions.filterBooking())
     }, [tableStatus.waiting, tableStatus.accepted, tableStatus.sorted, tableStatus.canceled])
+    useEffect(()=>{
+      axios.get('http://localhost:4049/api/order/last_order_id')
+      .then(res=>setCurrentOrderId(res.data.order_id))
+    }, [])
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -219,6 +229,28 @@ export default function DenseTable({tableStatus}) {
     }
     
     const handleCloseDialog = () =>setOpenDialog(false);
+    const handleAccepted  = (id, index, booking)=>{
+      listBooking[index].booking_status  = 3 
+      dispatch(actions.setListBooking(listBooking));
+      axios.put('http://localhost:4049/api/booking/update-status', {id, status:3})
+      axios.put('http://localhost:4049/api/table/update-status', {table_id: booking.table_id, status: 1});
+      const newOrderId = currentOrderId   +1;
+      setCurrentOrderId(newOrderId);
+      const newOrderCode = generateRandomCode(newOrderId);
+      const newOrder = {
+        client_id: booking.client_id, 
+        table_id:booking.table_id[0], 
+        order_menu:[], 
+        order_code: newOrderCode, 
+        client_quantity: booking.adult_quantity + booking.children_quantity, 
+        note: '', 
+        employee_id: 1, 
+        booking_code: booking.booking_code, 
+        order_id: newOrderId,
+      }
+      axios.post(`http://localhost:4049/api/order/new`, newOrder)
+      .then(res=>console.log(res))
+    }
   return (
     <Fragment>
       <Box sx={{ width: '100%' }}>
@@ -261,6 +293,11 @@ export default function DenseTable({tableStatus}) {
                                   setOpenCancelBookingDialog(true);
                                   setCurrentCancelData(row);
                                 }
+                              else if(action.id ===1){
+                                handleAccepted(row.booking_id, index, row);
+                              }
+                              else if(action.id === 2)
+                                navigate('/cashier')
                             }}>
                               {action.icon}
                             </IconButton>

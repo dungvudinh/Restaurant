@@ -10,18 +10,32 @@ import { IconButton, Input, Backdrop, CircularProgress } from '@mui/material';
 import { AssignmentTurnedIn, Create, NotInterested } from '@mui/icons-material';
 import {useStore, actions} from '../../store';
 import CustomAlert from '../CustomAlert';
+
 export default function CancelBookingDialog({isOpenDialog,onCloseDialog, data }) {
   const [state, dispatch] = useStore();
   const [isLoading, setLoading]= useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState({});
-  
+  const {status, timeline} = state;
+  console.log(data);
   const handleSubmit = async ()=>
     {
       try 
         {
             const result = await axios.put(`http://localhost:4049/api/booking/cancel`, {data:{booking_code:data.booking_code}});
-            const newListBooking = await axios.get('http://localhost:4049/api/booking');
+            //nếu khách hàng đã nhận bàn => order được tạo => hủy booking kèm theo order 
+            if(data.booking_status === 3){
+              axios.delete('http://localhost:4049/api/order/delete-by-booking', {data:{booking_code:data.booking_code}})
+              //update trạng thái bàn
+              axios.put('http://localhost:4049/api/table/update-status', {table_id: data.table_id[0], status: 0});
+            }
+            
+            const newListBooking = await axios.get('http://localhost:4049/api/booking', {
+                params:{
+                    status, 
+                    timeline
+                }
+            });
             if(result.data.status === 'success')
                 dispatch(actions.setListBooking(newListBooking.data));
             setAlertMessage({status:result.data.status, message: result.data.message});

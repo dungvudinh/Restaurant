@@ -1,20 +1,21 @@
-import { forwardRef } from "react";
+import { forwardRef, useState, useEffect} from "react";
 import { Stack, TableCell, TableRow, TableBody ,TableHead, Table, TableContainer } from "@mui/material";
+import axios from "axios";
 
 
-function createData(id, name, quantity, price) {
-    return { id, name, quantity, price };
-  }
+
   
-  const rows = [
-    createData(1, 'Bún bò huế', 1, 45000),
-    createData(2, 'Bún bò huế', 1, 45000),
-  ];
-const PaymentPDF = forwardRef((props, ref)=>{
+
+const PaymentPDF = forwardRef(({data, onCloseDialog}, ref)=>{
+  const [client, setClient] = useState({});
+  useEffect(()=>{
+    axios.get(`http://localhost:4049/api/client?id=${data.client_id}`)
+    .then(res=>setClient(res.data[0]))
+  }, [])
     return ( 
         <div className="wrapper" ref={ref} style={{padding:'30px'}}>
             <Stack direction="row" marginBottom="10px">
-              <p style={{fontSize:'14px', fontWeight:'600', marginRight:'5px'}}>Tên cửa hàng:</p>
+              <h4 style={{fontSize:'14px', fontWeight:'600', marginRight:'5px'}}>Tên cửa hàng:</h4>
               <h4 style={{fontSize:'14px'}}>Ha Noi Cuisine Corner</h4>
             </Stack>
             <Stack direction="row" marginBottom="10px">
@@ -32,24 +33,24 @@ const PaymentPDF = forwardRef((props, ref)=>{
             </Stack>
             <Stack direction="column" marginBottom="10px" justifyContent="center" alignItems="center">
               <h4 style={{fontSize:'16px', fontWeight:'600', marginRight:'5px'}}>HÓA ĐƠN BÁN HÀNG</h4>
-              <p style={{fontSize:'15px', fontWeight:'600', marginRight:'5px'}}>HD00002</p>
+              <p style={{fontSize:'15px', fontWeight:'600', marginRight:'5px'}}>{data.order_code}</p>
             </Stack>
 
             <Stack direction="row" marginBottom="10px" >
             <p style={{fontSize:'14px', fontWeight:'600', marginRight:'5px'}}>Khách hàng:</p>
-              <h4 style={{fontSize:'14px'}}>Vũ Đình Dũng</h4>
+              <h4 style={{fontSize:'14px'}}>{client.full_name}</h4>
             </Stack>
             <Stack direction="row" marginBottom="10px" >
             <p style={{fontSize:'14px', fontWeight:'600', marginRight:'5px'}}>Địa chỉ:</p>
-              <h4 style={{fontSize:'14px'}}>Đại học Công Nghiệp Hà Nội - Nhổn</h4>
+              <h4 style={{fontSize:'14px'}}>{client.address}</h4>
             </Stack>
             <Stack direction="row" marginBottom="20px" >
             <p style={{fontSize:'14px', fontWeight:'600', marginRight:'5px'}}>Điện thoại:</p>
-              <h4 style={{fontSize:'14px'}}>0869370492</h4>
+              <h4 style={{fontSize:'14px'}}>{client.phone_number}</h4>
             </Stack>
             <Stack direction="row" marginBottom="10px" >
             <p style={{fontSize:'14px', fontWeight:'600', marginRight:'5px'}}>Người bán:</p>
-              <h4 style={{fontSize:'14px'}}>Hoàng Việt Anh</h4>
+              <h4 style={{fontSize:'14px'}}>{data.employee}</h4>
             </Stack>
           <TableContainer >
           <Table aria-label="simple table">
@@ -61,16 +62,16 @@ const PaymentPDF = forwardRef((props, ref)=>{
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows.map((row) => (
+                {data.order_menu.map((orderMenuItem , index) => (
                   <TableRow
-                    key={row.id}
+                    key={index}
                     sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                   >
                     <TableCell align="left">
-                      <h4>{row.name}</h4>
+                      <h4>{orderMenuItem.order_menu_name}</h4>
                     </TableCell>
-                    <TableCell align="left">{row.quantity}</TableCell>
-                    <TableCell align="left">{row.price}</TableCell>
+                    <TableCell align="left">{orderMenuItem.order_menu_quantity}</TableCell>
+                    <TableCell align="left">{orderMenuItem.order_menu_price}</TableCell>  
                   </TableRow>
                 ))}
               </TableBody>
@@ -78,7 +79,7 @@ const PaymentPDF = forwardRef((props, ref)=>{
           </TableContainer>
           <Stack direction="row" marginBottom="10px" justifyContent="flex-end" marginRight="10px">
             <p style={{fontSize:'14px', fontWeight:'600', marginRight:'5px'}}>Tổng tiền hóa đơn:</p>
-              <h4 style={{fontSize:'14px'}}>90,000</h4>
+              <h4 style={{fontSize:'14px'}}>{data.total}</h4>
             </Stack>
             <Stack direction="row" marginBottom="10px" justifyContent="flex-end" marginRight="10px">
             <p style={{fontSize:'14px', fontWeight:'600', marginRight:'5px'}}>Chiết khấu:</p>
@@ -86,7 +87,7 @@ const PaymentPDF = forwardRef((props, ref)=>{
             </Stack>
             <Stack direction="row" marginBottom="10px" justifyContent="flex-end" marginRight="10px">
             <p style={{fontSize:'14px', fontWeight:'600', marginRight:'5px'}}>Tổng cộng:</p>
-              <h4 style={{fontSize:'14px'}}>90,000</h4>
+              <h4 style={{fontSize:'14px'}}>{data.total}</h4>
             </Stack>
         </div>
     )

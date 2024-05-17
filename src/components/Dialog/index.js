@@ -51,6 +51,7 @@ function CustomizedDialog({onCloseDialog, isOpenDialog}) {
     const [showAlert, setShowAlert] = useState();
     const [alertMessage, setAlertMessage] = useState({});
     const [bookingCode, setBookingCode] = useState('');
+    const {timeline, status} = state;
     const [newBooking, setNewBooking] = useState({
         client_id:'', 
         booking_date:`${new Date().getFullYear()}-${String(new Date().getMonth() +1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`,                                 
@@ -81,7 +82,12 @@ function CustomizedDialog({onCloseDialog, isOpenDialog}) {
         try 
         {
             const result = await axios.post(`http://localhost:4049/api/booking/new`, newBooking);
-            const newListBooking = await axios.get('http://localhost:4049/api/booking');
+            const newListBooking = await axios.get('http://localhost:4049/api/booking', {
+                params:{
+                    status, 
+                    timeline
+                }
+            });
             if(result.data.status === 'success')
             {
                 dispatch(actions.setListBooking(newListBooking.data));

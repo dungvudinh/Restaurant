@@ -1,16 +1,20 @@
-import { useState, Fragment, useRef, useEffect, forwardRef } from 'react';
+import { useState, Fragment, useRef, useEffect, forwardRef, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import styles from './Cashier.module.scss';
 import classNames from 'classnames/bind';
 import {Box, Tab, Tabs, IconButton, Stack, Button,Dialog, DialogTitle
 , DialogContent, DialogActions, Input, TextField, Avatar, ListItemAvatar, ListItemText,
- OutlinedInput, MenuItem, Select, Slide,Grid ,List, ListItem, ListItemButton, ListItemIcon,
- ListSubheader, TableCell, TableBody, TableRow,Table, TableHead,TableContainer, Paper, 
-ToggleButtonGroup, ToggleButton, Badge, Backdrop, CircularProgress} from '@mui/material';
+ MenuItem, Select, Slide,Grid ,List, ListItem, ListItemButton, 
+ ListSubheader, TableCell, TableBody, TableRow,Table, TableHead,TableContainer, 
+ToggleButtonGroup, ToggleButton, Badge, Backdrop, CircularProgress, Menu, 
+InputLabel,
+ListItemIcon} from '@mui/material';
 import { Search,Close, TableRestaurant, HowToReg, FileDownloadDone,
- NotInterested, Restaurant, WineBar, CheckBox, Add,TableBar, DeleteOutlineOutlined,Remove, 
- ContentPaste,BorderColorOutlined,  Groups,Mode,MonetizationOnOutlined,Circle,
- Percent,Payments, Delete, AccountCircleOutlined} from '@mui/icons-material';
+ NotInterested, Restaurant, WineBar, CheckBox, Add,BorderColorOutlined,  Groups,Mode,MonetizationOnOutlined,Circle,
+ Percent,Payments,
+ RestaurantMenu, ExpandMore, 
+ MenuOutlined} from '@mui/icons-material';
 
 import { blue, red } from '@mui/material/colors';
 import { TableIcon } from '../../assets/icons';
@@ -23,7 +27,7 @@ import { useReactToPrint as UseReactToPrint } from 'react-to-print';
 import { useStore, actions } from '../../store';
 import CustomAlert from '../../components/CustomAlert';
 import CustomTabContent from '../../components/CustomTabContent';
-
+import zlpay from '../../assets/images/zlpay.png'
 const cx  = classNames.bind(styles);
 
 function generateRandomCode(id) {
@@ -32,6 +36,7 @@ function generateRandomCode(id) {
 }
 
 function Cashier() {
+    const navigate = useNavigate();
     const [state, dispatch] = useStore();
     const [tabValue, setTabValue] = useState(0);
     const [listArea, setListArea] = useState([]);
@@ -46,7 +51,8 @@ function Cashier() {
     const [currentSelectedTable, setSelectedTable] = useState({
       tableId: null, 
       tableName: '', 
-      area: null
+      area: null, 
+      status: null
     });
     const [openNoteDialog, setOpenNoteDialog] = useState(false);
     const [openNewItemDialog, setOpenNewItemDialog] = useState(false);
@@ -61,20 +67,47 @@ function Cashier() {
     const [openPaymentDialog, setOpenPaymentDialog] = useState(false);
     const [currentOrderMenu, setCurrentOrderMenu] = useState([]);
     const [currentOrderId, setCurrentOrderId] = useState(null);
+    const [isDisablePayment, setDisablePayment] = useState(true);
+    const [openClientQuantityDialog, setOpenClientQuantityDialog] = useState(false);
+
     const [newOrder, setNewOrder] = useState({
       order_code: '', 
       client_id: null, 
       client_quantity:1, 
       employee_id:1, 
-      order_note: '',
       order_menu: [], 
       table_id: null, 
       area:null, 
       booking_code:null , 
       id: null, 
+      order_id :null,
       table_name: '', 
       note:''
     })
+    const [userName, setUserName] = useState(null);
+    const instance = axios.create({
+      baseURL: 'http://localhost:4049/api', // Change this to your backend URL
+      withCredentials:true, 
+      
+      headers: {
+          "content-type": "application/json"
+        },
+      
+    });
+    useEffect(()=>{
+        instance.get('http://localhost:4049/api/cashier')
+        .then(res=>{
+            if(res.data.status === 'success'){
+                setUserName(res.data.full_name);
+            }
+            else {
+                navigate('/login');
+            }
+        })
+    }, [])
+    // useEffect(()=>{
+
+    // }, [listOrder[currentOrderTab].order_menu.length, ])
     useEffect(()=>{
       if(tabValue === 0)
       {
@@ -101,18 +134,16 @@ function Cashier() {
           newListOrder = res.data
         if(newListOrder.length > 0 )
           setCurrentOrderMenu(newListOrder[currentOrderTab].order_menu);
-        else 
-          setCurrentOrderMenu([]);
         dispatch(actions.setListOrder(newListOrder))
       })
-      axios.get('http://localhost:4049/api/order/last_id')
-      .then(res=>setCurrentOrderId(res.data.id))
+      axios.get('http://localhost:4049/api/order/last_order_id')
+      .then(res=>setCurrentOrderId(res.data.order_id))
     }, [])
     useEffect(()=>{
         if(listOrder.length > 0 )
           setCurrentOrderMenu(listOrder[currentOrderTab].order_menu)
     }, [currentOrderTab])
-    
+  
     const handleSearchRoom = ()=>
     {
       setOpenSearch(true)
@@ -129,24 +160,24 @@ function Cashier() {
     {
       const newOrderId = currentOrderId +1;
       const newOrderCode = generateRandomCode(newOrderId);
+      var newOrderObj = null;
+      if(currentSelectedTable.status === 0)
+        newOrderObj = {...newOrder, order_code: newOrderCode, order_id: newOrderId, table_id: currentSelectedTable.tableId, table_name: currentSelectedTable.tableName, area: currentSelectedTable.area};
+      else 
+        newOrderObj = {...newOrder, order_code: newOrderCode, order_id: newOrderId}
       setCurrentOrderTab(listOrder.length);
       setCurrentOrderId(newOrderId);
       setCurrentOrderMenu([])
-      setNewOrder(prevOrder=>({...prevOrder, order_code: newOrderCode}))
-      // setListOrder(prevList=>[...prevList, {...newOrder, order_code: newOrderCode,  id:newOrderId}]);
-      dispatch(actions.setListOrder([...listOrder, {...newOrder, order_code: newOrderCode}]))
+      // setNewOrder(newOrderObj)
+      dispatch(actions.setListOrder([...listOrder, newOrderObj]))
     }
+    
     const handleCancelTab = (e, index, order)=>
     {
       e.stopPropagation();
-      //delete order dựa vào table id 
-      
-      //trả lại trạng thái bàn 
-      const newListOrder = [...listOrder];
-      newListOrder.splice(index, 1);
-      // setListOrder(newListOrder);
-      dispatch(actions.setListOrder(newListOrder))
-      if(newListOrder.length === 0)
+      listOrder.splice(index, 1);
+      dispatch(actions.setListOrder(listOrder))
+      if(listOrder.length === 0)
         handleAddNewTab();
       if(index < currentOrderTab)
         setCurrentOrderTab(index);
@@ -154,9 +185,49 @@ function Cashier() {
         setCurrentOrderTab(index -1);
       else 
         setCurrentOrderTab(()=> index -1  < 0 ? 0 : (index -1));
+      // check nếu đã gọi món thì mới call api để thực hiện thao tác 
+      if(order.order_menu.length > 0 ){
+        //check nếu bàn đã được chọn thì mới update lại trạng thái bàn
+        if(order.table_id !== null){
+          axios.put('http://localhost:4049/api/table/update-status', {table_id: order.table_id, status: 0});
+          listOrder.splice(index, 1);
+          dispatch(actions.setListOrder(listOrder));
+        }
+        //xóa order
         axios.delete('http://localhost:4049/api/order/delete', {data:{order_id:order.id}})
-      listOrder.splice(index, 1);
-      dispatch(actions.setListOrder(listOrder));
+        
+        const newListTable = listTable.map(tableItem=>{
+          if(tableItem.id === order.table_id)
+            tableItem.status = 0;
+          return tableItem;
+        })
+        dispatch(actions.setListTable(newListTable));
+      }
+      else 
+      {
+        //order được tạo từ booking
+        if(order.booking_code !== null){
+          //update status booking
+          //check nếu bàn đã được chọn thì mới update lại trạng thái bàn
+        if(order.table_id !== null){
+          axios.put('http://localhost:4049/api/table/update-status', {table_id: order.table_id, status: 0});
+          listOrder.splice(index, 1);
+          dispatch(actions.setListOrder(listOrder));
+        }
+        //xóa order
+        axios.delete('http://localhost:4049/api/order/delete', {data:{order_id:order.id}})
+        axios.put('http://localhost:4049/api/booking/update-status', {booking_code: order.booking_code, status:2})
+        
+        const newListTable = listTable.map(tableItem=>{
+          if(tableItem.id === order.table_id)
+            tableItem.status = 0;
+          return tableItem;
+        })
+        dispatch(actions.setListTable(newListTable));
+        }
+      }
+      
+      
         
     }
     const handleToggleNoteDialog = (e, type, id, note)=>
@@ -172,56 +243,79 @@ function Cashier() {
     }
     const handleSelectedTable = (table)=>
       {
-        setSelectedTable({tableId: table.id, area:table.area, tableName:table.name})
-        // không cho phép đổi bàn khi đã chọn món
-        console.log(listOrder[currentOrderTab])
-        if(table.status !== 1){
-          if(listOrder[currentOrderTab].order_menu.length > 0){
-            if(listOrder[currentOrderTab].table_id !== null){
-              setShowAlert(true)
-              setAlertMessage({status:'error', message:'Không cho phép đổi bàn khi đã chọn món'})
+        setSelectedTable({tableId: table.id, area:table.area, tableName:table.name, status: table.status})
+        var selectTabIndex = null;
+          listOrder.forEach((order, index)=>{
+            if(order.table_id  === table.id){
+              selectTabIndex = index;
+              return;
             }
+          })
+          //nếu  chọn vào bàn trống và bàn này chưa nằm trong order mới nào
+        if(selectTabIndex === null){
+          listOrder[currentOrderTab].table_id  = table.id;
+          listOrder[currentOrderTab].area  = table.area;
+          listOrder[currentOrderTab].table_name  = table.name;
+          
+          dispatch(actions.setListOrder(listOrder));
+          // const newOrderId = currentOrderId +1;
+          // const newOrderCode = generateRandomCode(newOrderId);
+          // setCurrentOrderTab(listOrder.length);
+          // setCurrentOrderId(newOrderId);
+          // setCurrentOrderMenu([])
+          // setNewOrder(prevOrder=>({...prevOrder, order_code: newOrderCode, order_id: newOrderId, table_id: table.id, table_name: table.name, area: table.area}))
+          // dispatch(actions.setListOrder([...listOrder, {...newOrder, order_code: newOrderCode, order_id: newOrderId, table_id: table.id, table_name: table.name, area: table.area}]))
+        }
+        else{
+          // không cho phép đổi bàn khi đã chọn món
+          if(table.status !== 1){
+            console.log("CURRENT ORDER TAB: ", currentOrderTab)
+            // console.log(listOrder[selectTabIndex])
+            if(listOrder[currentOrderTab].order_menu.length > 0){
+              if(listOrder[currentOrderTab].table_id !== null){
+                // setShowAlert(true)
+                // setAlertMessage({status:'error', message:'Không cho phép đổi bàn khi đã chọn món'})
+              }
+              else{
+                axios.put('http://localhost:4049/api/table/update-status', {table_id: table.id, status: 1});
+                const newLisTable = listTable.map(tableItem=>{
+                  if(tableItem.id ===  table.id)
+                    tableItem.status = 1;
+                  return tableItem;
+                })
+                dispatch(actions.setListTable(newLisTable));
+                listOrder[currentOrderTab].table_id = table.id;
+                listOrder[currentOrderTab].area = table.area;
+                listOrder[currentOrderTab].table_name = table.name;
+                //id = null: order là bản ghi mới, thêm vào bảng order
+                if(listOrder[currentOrderTab].id === null)
+                  axios.post(`http://localhost:4049/api/order/new`, listOrder[currentOrderTab])
+                //id != null order là bản ghi đã lưu trong db , cập nhập db
+                else
+                  axios.put('http://localhost:4049/api/order/update-other', listOrder[currentOrderTab])
+                
+                 
+              }
+            }
+            
             else{
-              console.log('clicked')
-              axios.put('http://localhost:4049/api/table/update-status', {table_id: table.id, status: 1});
-              const newLisTable = listTable.map(tableItem=>{
-                if(tableItem.id ===  table.id)
-                  tableItem.status = 1;
-                return tableItem;
-              })
-              dispatch(actions.setListTable(newLisTable));
               listOrder[currentOrderTab].table_id = table.id;
               listOrder[currentOrderTab].area = table.area;
               listOrder[currentOrderTab].table_name = table.name;
-              axios.put('http://localhost:4049/api/order/update-other', listOrder[currentOrderTab])
             }
+            dispatch(actions.setListOrder(listOrder))
           }
-          
-          else{
+          else 
+          {
+            
+            // setShowAlert(true)
+            // setAlertMessage({status:'error', message:'Không cho phép chọn bàn đang có khách ngồi'})
+          }
 
-            listOrder[currentOrderTab].table_id = table.id;
-            listOrder[currentOrderTab].area = table.area;
-            listOrder[currentOrderTab].table_name = table.name;
-          }
-          dispatch(actions.setListOrder(listOrder))
-        }
-        else 
-        {
-          setShowAlert(true)
-          setAlertMessage({status:'error', message:'Không cho phép chọn bàn đang có khách ngồi'})
         }
       }
-      console.log(listOrder[currentOrderTab])
     const handleSelectMenu = (menu)=>{
-      //check xem đã chọn bàn chưa, nếu rồi thì update trạng thái bàn
-      if(listOrder[currentOrderTab].table_id !== null){
-        const newListTable = listTable.map(tableItem=>{
-          if(tableItem.id === listOrder[currentOrderTab].table_id)
-            tableItem.status = 1;                      
-          return tableItem;
-        })
-        dispatch(actions.setListTable(newListTable))
-      }
+
       //nếu đã chọn trùng, tăng số lượng sản phẩm lên 1 
       var updateCurrentOrderMenu = [...currentOrderMenu];
       if(updateCurrentOrderMenu.some(orderMenu=>orderMenu.order_menu_id === menu.id)){
@@ -235,13 +329,78 @@ function Cashier() {
         updateCurrentOrderMenu.push({order_menu_id:menu.id, order_menu_name: menu.name, order_menu_note: '', order_menu_price:menu.price, order_menu_quantity:1}); 
       }
       listOrder[currentOrderTab].order_menu = updateCurrentOrderMenu;
-      dispatch(actions.setListOrder(listOrder))
+      //nếu id = null, tạo order 
+      
+      //check xem đã chọn bàn chưa, nếu rồi thì update trạng thái bàn
+      if(listOrder[currentOrderTab].table_id !== null){
+        const newListTable = listTable.map(tableItem=>{
+          if(tableItem.id === listOrder[currentOrderTab].table_id)
+            tableItem.status = 1;                      
+          return tableItem;
+        })
+        dispatch(actions.setListTable(newListTable))
+        console.log(listOrder[currentOrderTab])
+        axios.put('http://localhost:4049/api/table/update-status', {table_id: listOrder[currentOrderTab].table_id, status: 1});
+
+        if(listOrder[currentOrderTab].id === null && listOrder[currentOrderTab].order_menu.length === 1){
+          //với lần chọn món đầu tiên, order sẽ đk lưu vào DB
+          axios.post(`http://localhost:4049/api/order/new`, listOrder[currentOrderTab])
+        }
+        else{
+            // nếu đã chọn bàn, update thông tin order 
+            //với các lần chọn món tiếp theo, order_menu sẽ được update
+            //get order by order_code 
+            axios.put('http://localhost:4049/api/order/update-other', listOrder[currentOrderTab])
+        }
+     
+        dispatch(actions.setListOrder(listOrder))
+      }
+      
       setCurrentOrderMenu(updateCurrentOrderMenu)
     }
+    const calcMoney = (order_menu)=>{
+      var total =0;
+      order_menu.forEach(orderMenuItem=>{
+        total = total + (orderMenuItem.order_menu_price * orderMenuItem.order_menu_quantity);
+      })
+      return total;
+    }
    
+    const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+  const handleClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
     return ( 
       <Fragment>
-          <div className={cx('wrapper')}>
+          <div className={cx('wrapper')} style={{position:'relative'}}>
+            
+              <Button
+                  id="basic-button"
+                  aria-controls={open ? 'basic-menu' : undefined}
+                  aria-haspopup="true"
+                  aria-expanded={open ? 'true' : undefined}
+                  onClick={handleClick}
+                  sx={{color:'#fff', display:'flex', alignItems:'center', position:'absolute !important', right:'10px', top:'5px'}}
+                >
+                  <span style={{fontSize:'12px'}}>{userName}</span>
+                  <MenuOutlined size="small" sx={{marginLeft:'10px'}}/>
+            </Button>
+            <Menu
+              id="basic-menu"
+              anchorEl={anchorEl}
+              open={open}
+              onClose={handleClose}
+              MenuListProps={{
+                'aria-labelledby': 'basic-button',
+              }}
+            >
+              <MenuItem onClick={()=>navigate('/reception')}>Lễ tân</MenuItem>
+              <MenuItem onClick={handleClose}>Đăng xuất</MenuItem>
+            </Menu>
               <Grid container spacing={2} sx={{width:'100%', margin:0, height:'calc(100vh - 40px)'}}>
                 
                   <Grid item xs={6} className={cx('left-wrapper')}>
@@ -361,8 +520,8 @@ function Cashier() {
                                                 {menu.price}đ
                                                 </p>
                                             </div>
-                                            <div style={{padding:'10px 0',  backgroundColor:'#f5f5f6', width:'100%', color:'#111',height:'calc(100% - 120px)'}}>
-                                              <p style={{fontSize:'11px'}}>{menu.name}</p>
+                                            <div style={{padding:'10px 5px',  backgroundColor:'#f5f5f6', width:'100%', color:'#111',height:'calc(100% - 120px)'}}>
+                                              <p style={{fontSize:'11px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{menu.name}</p>
                                             </div>
                                           </Button>
                                       ))}
@@ -381,21 +540,23 @@ function Cashier() {
                     <div className={cx('right-content')}>
                       <Stack direction="row" justifyContent="flex-start" alignItems='center'>
                         <Box sx={{ maxWidth: { xs: 320, sm: 500 }, bgcolor: 'background.paper' }}>
-                          <Tabs
-                            value={currentOrderTab}
-                            onChange={(e, newValue)=>{setCurrentOrderTab(newValue)}}
-                            variant="scrollable"
-                            scrollButtons="auto"
-                            aria-label="scrollable auto tabs example"
-                            sx={{'button': {fontSize:'12px'}, '.MuiBox-root':{padding:0}}} 
-                          >
-                            {listOrder.map((order, index)=>(
-                                <Tab key={order.id}  id={`order-tab-${index}`} aria-controls={`order-tabpanel-${index}`} 
-                                label={<p style={{display:'flex', alignItems:'center'}}>{order.order_code} 
-                                 <Close fontSize="small" onClick={(e)=>handleCancelTab(e, index, order)} sx={{color:'#111', marginLeft:'5px'}}/></p>} 
-                                  value={index}/>
-                            ))}
-                          </Tabs>
+                          {listOrder.length > 0 && 
+                              <Tabs
+                                value={currentOrderTab}
+                                onChange={(e, newValue)=>{setCurrentOrderTab(newValue)}}
+                                variant="scrollable"
+                                scrollButtons="auto"
+                                aria-label="scrollable auto tabs example"
+                                sx={{'button': {fontSize:'12px'}, '.MuiBox-root':{padding:0}}} 
+                              >
+                                {listOrder.length > 0 && listOrder.map((order, index)=>(
+                                    <Tab key={index}  id={`order-tab-${index}`} aria-controls={`order-tabpanel-${index}`} 
+                                    label={<p style={{display:'flex', alignItems:'center'}}>{order.order_code} 
+                                    <Close fontSize="small" onClick={(e)=>handleCancelTab(e, index, order)} sx={{color:'#111', marginLeft:'5px'}}/></p>} 
+                                      value={index}/>
+                                ))}
+                              </Tabs>
+                          }
                         </Box>
                         <Button size="small" variant="contained" color='primary' onClick={handleAddNewTab}
                         sx={{minWidth:'30px', height:'30px', borderRadius:'50%', padding:0, marginLeft:'10px'}}>
@@ -403,9 +564,11 @@ function Cashier() {
                         </Button>
                       </Stack>
                       {/* TAB CONTENT */}
-                      {listOrder.map((order, index)=>(
-                        <CustomTabContent order={order} currentOrderTab={currentOrderTab} id={index} key={index} onToggleNoteDialog={handleToggleNoteDialog}/>
-                      ))}
+                      <div style={{height:'498px'}}>
+                        {listOrder.length > 0 && listOrder.map((order, index)=>(
+                          <CustomTabContent order={order} currentOrderTab={currentOrderTab} id={index} key={index} onToggleNoteDialog={handleToggleNoteDialog}/>
+                        ))}
+                      </div>
 
                       <div style={{width:'100%', backgroundColor:'#e6f0fa', height:'100px', borderRadius:'20px', padding:'10px'}}>
                         <Stack direction="row" sx={{width:'100%'}}>
@@ -422,38 +585,34 @@ function Cashier() {
                                 defaultValue={1}
                               >
                                 <MenuItem value={1} sx={{fontSize:'13px'}}>
-                                  <em>Vũ Đình Dũng</em>
+                                  <em>{userName}</em>
                                 </MenuItem>
-                                <MenuItem value={2} sx={{fontSize:'13px'}}>
-                                  <em>Lê Tuấn Kiệt</em>
-                                </MenuItem>
-                                {/* <MenuItem value={10}>Lê Tuấn Kiệt</MenuItem>
-                                <MenuItem value={20}>Twenty</MenuItem>
-                                <MenuItem value={30}>Thirty</MenuItem> */}
+                               
+                                
                               </Select>
                               
                             </Grid>
                             <Grid item xs={2} sx={{textAlign:'center'}}>
-                              <IconButton size="small" sx={{borderRadius:"20px", backgroundColor:'#dde7f1', padding:'6px 12px'}}>
+                              <IconButton size="small" sx={{borderRadius:"20px", backgroundColor:'#dde7f1', padding:'6px 12px'}} onClick={()=>setOpenClientQuantityDialog(true)} disabled={listOrder.length <= 0 ? true : false}>
                                 <Groups fontSize="small"/>
-                                <span style={{fontSize:'15px', fontWeight:'600', marginLeft:'5px'}}>4</span>
+                                <span style={{fontSize:'15px', fontWeight:'600', marginLeft:'5px'}}>{listOrder.length > 0 ? listOrder[currentOrderTab].client_quantity : 0}</span>
                               </IconButton>
                             </Grid>
                             <Grid item xs={2} sx={{textAlign:'left'}}>
-                              <IconButton size="small" sx={{borderRadius:"20px", backgroundColor:'#dde7f1', padding:'6px'}}
-                              onClick={(e)=>handleToggleNoteDialog(e,'order', null)}>
+                              <IconButton size="small" sx={{borderRadius:"20px", backgroundColor:'#dde7f1', padding:'6px'}} disabled={listOrder.length <= 0 ? true : false}
+                              onClick={(e)=>handleToggleNoteDialog(e,'order', listOrder[currentOrderTab].id  ? listOrder[currentOrderTab].id : listOrder[currentOrderTab].order_code, listOrder[currentOrderTab].order_note)}>
                                 <Mode fontSize="small"/>
                               </IconButton>
                             </Grid>
                             <Grid item xs={5} sx={{textAlign:'right', display:'flex', alignItems:'center', justifyContent:'flex-end'}}>
                               <p style={{fontWeight:'600', marginRight:'10px'}}>Tổng tiền:</p>
-                              <h5 style={{fontSize:'20px'}}>500000đ</h5>
+                              <p style={{fontSize:'20px', fontWeight:600}}>{listOrder[currentOrderTab] && calcMoney(listOrder[currentOrderTab].order_menu)}</p>
                             </Grid>
                           </Grid>
                         </Stack>
                         <Stack direction="row" sx={{marginTop:'10px'}} justifyContent="center">
                             <Grid item xs={6} >
-                              <Button variant='contained' color='success' sx={{width:'100%'}} onClick={()=>setOpenPaymentDialog(true)}>
+                              <Button variant='contained' color='success' sx={{width:'100%'}} onClick={()=>setOpenPaymentDialog(true)} disabled={listOrder.length === 0 ? true : false}>
                                 <MonetizationOnOutlined sx={{marginRight:'10px'}}/>
                                 Thanh toán
                               </Button>
@@ -468,10 +627,12 @@ function Cashier() {
           <SearchPopup openSearch={openSearch} onCloseSearch={()=>setOpenSearch(false)} title={titleSearchPop} type={typeSearch}
            setSelectedTable={setSelectedTable} setAreaTab={setAreaTab}/>
           <NoteDialog openDialog={openNoteDialog} onCloseDialog={()=>setOpenNoteDialog(false)} data={currentNote} setCurrentNote={setCurrentNote}/>
+        {openClientQuantityDialog &&  <ClientQuantityDialog   openDialog={openClientQuantityDialog} onCloseDialog={()=>setOpenClientQuantityDialog(false)} order={listOrder[currentOrderTab]}  />}
           <NewItemDialog openDialog={openNewItemDialog} onCloseDialog={()=>setOpenNewItemDialog(false)}/>
           <NewClientDialog openClientDialog={newClientDialog} onCloseClientDialog={()=>setNewClientDialog(false)}/>
           {showAlert && <CustomAlert alert={alertMessage} open={showAlert} onClose={()=>setShowAlert(false)}/>}
-          {/* <PaymentDialog openDialog={openPaymentDialog} onCloseDialog={()=>setOpenPaymentDialog(false)}/> */}
+          
+          {listOrder[currentOrderTab] && <PaymentDialog openDialog={openPaymentDialog} onCloseDialog={()=>setOpenPaymentDialog(false)} order={listOrder[currentOrderTab]} userName={userName} setCurrentOrderTab={setCurrentOrderTab}/>}
       </Fragment>
      );
 }
@@ -675,6 +836,7 @@ function NoteDialog({openDialog, onCloseDialog, data, setCurrentNote})
   const [state, dispatch] = useStore();
   const [showAlert, setShowAlert] = useState();
   const [alertMessage, setAlertMessage] = useState({});
+  const {listOrder} = state;
   const handleChangeNote = (e)=>{
     if(data.type !== 'order_menu'){
       setCurrentNote(prev=>({...prev, note:e.target.value}))
@@ -715,6 +877,31 @@ function NoteDialog({openDialog, onCloseDialog, data, setCurrentNote})
         setAlertMessage({status:result.data.status, message: result.data.message});
         setShowAlert(true);
       }
+      else if(data.type === 'order'){
+        //id !== null, order đã được lưu lên DB 
+        console.log(data);
+        //nếu data.id chứa tiền tố HD => order chưa được lưu vào DB nên chưa có id, phải dùng đến order_code
+        if(!data.id.toString().includes('HD')){
+          const result = await axios.put(`http://localhost:4049/api/order/update-note`, data)
+          if(result.data.status === 'success')
+          {
+              const newListTable = await axios.get('http://localhost:4049/api/order');
+              dispatch(actions.setListOrder(newListTable.data));
+          }
+            setAlertMessage({status:result.data.status, message: result.data.message});
+            setShowAlert(true);
+        } 
+        // id === null, order chưa được lưu vào DB
+        else {
+          const newListOrder = listOrder.map(orderItem=>{
+            if(orderItem.order_code === data.id){
+              orderItem.note = data.note;
+            }
+            return orderItem;
+          })
+          dispatch(actions.setListOrder(newListOrder));
+        }
+      }
     }
     catch(error)
     {
@@ -737,7 +924,7 @@ function NoteDialog({openDialog, onCloseDialog, data, setCurrentNote})
         fullWidth={true}
         maxWidth="xs"
       >
-        <DialogTitle fontSize="17px">Ghi chú phòng/bàn</DialogTitle>
+        <DialogTitle fontSize="17px">Ghi chú</DialogTitle>
         <DialogContent>
          <Input fullWidth={true} startAdornment={<BorderColorOutlined fontSize='small'/>}  onChange={handleChangeNote} value={data.type === 'order_menu' ? data.note.order_menu_note : data.note}/>
         </DialogContent>
@@ -757,6 +944,64 @@ function NoteDialog({openDialog, onCloseDialog, data, setCurrentNote})
   )
 }
 
+function ClientQuantityDialog({openDialog, onCloseDialog,order})
+{
+  const [state, dispatch] = useStore();
+  const [showAlert, setShowAlert] = useState();
+  const [alertMessage, setAlertMessage] = useState({});
+  const [clientQuantity ,setClientQuantity] = useState(order.client_quantity)
+  const {listOrder} = state;
+  const handleSaveNote = async ()=>{
+    try 
+    {
+      const newListOrder = listOrder.map(orderItem=>{
+        if(orderItem.order_code === order.order_code)
+          orderItem.client_quantity = clientQuantity;
+        return orderItem;
+      })
+      dispatch(actions.setListOrder(newListOrder))
+      onCloseDialog();
+    }
+    catch(error)
+    {
+      setAlertMessage({status:'error', message: error});
+      setShowAlert(true);
+    }
+    finally
+    {
+      onCloseDialog();
+    }
+    
+  }
+  return (
+    <Fragment>
+      <Dialog
+        open={openDialog}
+        keepMounted
+        onClose={onCloseDialog}
+        aria-describedby="alert-dialog-slide-description"
+        fullWidth={true}
+        maxWidth="xs"
+      >
+        <DialogTitle fontSize="17px">Số lượng khách</DialogTitle>
+        <DialogContent>
+         <Input fullWidth={true} startAdornment={<BorderColorOutlined fontSize='small'/>}  onChange={(e)=>setClientQuantity(e.target.value)} value={clientQuantity} placeholder='Nhập số lượng'/>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleSaveNote} variant="contained" color="primary" size="small">
+            <CheckBox fontSize="small" sx={{marginRight:'5px'}}/>
+            Xong
+          </Button>
+          <Button onClick={onCloseDialog} variant="contained" sx={{bgcolor:'#85888c'}} size="small">
+            <NotInterested fontSize="small" sx={{marginRight:'5px'}}/>
+            Bỏ qua
+            </Button>
+        </DialogActions>
+      </Dialog>
+      {showAlert && <CustomAlert alert={alertMessage} open={showAlert} onClose={()=>setShowAlert(false)}/>}
+    </Fragment>
+  )
+}
 function NewItemDialog({openDialog, onCloseDialog})
 {
   const [state, dispatch] = useStore();
@@ -1024,146 +1269,256 @@ const rows = [
   createData(1, 'Bún bò huế', 1, 45000),
   createData(2, 'Bún bò huế', 1, 45000),
 ];
-// function PaymentDialog({openDialog, onCloseDialog})
-// {
-//   const [discountUnit, setDiscountUnit] = useState('cash');
-//   const pdfRef = useRef();
+const  PaymentDialog = memo(({openDialog, onCloseDialog,order, userName, setCurrentOrderTab})=>
+{
+  const [state,dispatch] = useStore();
+  const navigate = useNavigate();
+  const [discountUnit, setDiscountUnit] = useState('cash');
+  const [valueMoney, setValueMoney] = useState(null);
+  const [showPDF, setShowPDF] = useState(false);
+  const [alertMessage, setAlertMessage] = useState({status:'', message:''});
+  const [showAlert, setShowAlert] = useState(false);
+  const pdfRef = useRef();
+  const handleChangeDiscountUnit = (event, unit) => {
+    setDiscountUnit(unit);
+  };
+  const handleCreatePDF = UseReactToPrint({
+    content:()=>pdfRef.current ,
+    suppressErrors: true, 
+    documentTitle:'payment', 
+    onAfterPrint:()=>{
+      setShowPDF(false)
+      onCloseDialog();
+    }
+  })
+  const [typePayment, setTypePayment] =useState('');
 
-//   const handleChangeDiscountUnit = (event, unit) => {
-//     setDiscountUnit(unit);
-//   };
-//   const handlePayment = UseReactToPrint({
-//     content:()=>pdfRef.current ,
-//     documentTitle:'payment', 
-//     onAfterPrint:()=>onCloseDialog()
-//   })
- 
-//   return (
-//     <Fragment>
-//       <Dialog
-//         open={openDialog}
-//         keepMounted
-//         onClose={onCloseDialog}
-//         aria-describedby="alert-dialog-slide-description"
-//         TransitionComponent={Transition}
-//         sx={{
-//           "& .MuiDialog-container": {
-//             "& .MuiPaper-root": {
-//               width: "100%",
-//               maxWidth: "1000px", 
-//               maxHeight:'100vh',
-//               height:'100%' , 
-//               borderRadius:0
-//             },
-//           },
-//         }}
-//         PaperProps={{sx:{position:'fixed', right:'-32px', top:'-32px'}}}
-//       >
-//         <DialogTitle fontSize="17px" display="flex" flexDirection="row"  alignItems="center">
-//           <h4>Phiếu thanh toán - Hóa đơn 1</h4>
-//           <Circle size="small" color='primary' sx={{width:'10px', height:'10px', margin:'0 10px'}}/>
-//           <h4 style={{color:'#0066CC'}}>Bàn số 2/Tầng 1</h4>
-//         </DialogTitle>
-//         <DialogContent>
-//          <Grid container spacing={4} >
-//           <Grid item xs={8} >
-//           <TableContainer >
-//             <Table aria-label="simple table">
-//               <TableHead>
-//                 <TableRow>
-//                   <TableCell  align="left">STT</TableCell>
-//                   <TableCell align="left">Tên món</TableCell>
-//                   <TableCell align="left">Số lượng</TableCell>
-//                   <TableCell align="left">Thành tiền</TableCell>
-//                 </TableRow>
-//               </TableHead>
-//               <TableBody>
-//                 {rows.map((row) => (
-//                   <TableRow
-//                     key={row.id}
-//                     sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-//                   >
-//                     <TableCell  align="left">
-//                       {row.id}
-//                     </TableCell>
-//                     <TableCell align="left">
-//                       <h4>{row.name}</h4>
-//                       <p style={{fontSize:'12px', maxWidth:'200px', whiteSpace:'pre-line',
-//                        whiteSpaceCollapse:'preserve-breaks', textWrap:'wrap', wordBreak:'break-word' }}>
-//                         Nhiều rau
-//                       </p>
-//                     </TableCell>
-//                     <TableCell align="left">{row.quantity}</TableCell>
-//                     <TableCell align="left">{row.price}</TableCell>
-//                   </TableRow>
-//                 ))}
-//               </TableBody>
-//             </Table>
-//           </TableContainer>
+  const calcMoney = (order_menu)=>{
+    var total =0;
+    order_menu.forEach(orderMenuItem=>{
+      total = total + (orderMenuItem.order_menu_price * orderMenuItem.order_menu_quantity);
+    })
+    return total;
+  }
+  const discount = (money)=>{
+    if(discountUnit === 'cash')
+      return money - valueMoney;
+    else if(discountUnit === 'percent')
+      return money * (100 - valueMoney)/100;
+  }
+  const handleChangeTypePayment = async (event) => {
+   try 
+   {
+    if(event.target.value === 'momo'){
+      const result = await axios.post('http://localhost:4049/payment', {amount:discount(calcMoney(order.order_menu))});
+      window.open(result.data.order_url, '_blank');
+      console.log(result);
+    }
+    setTypePayment(event.target.value);
+   }
+   catch(error){
+    console.log(error)
+   }
+
+  };
+
+  const handePrintPDF = async ()=>{
+    try 
+    {
+      const result = await axios.put('http://localhost:4049/api/order/update-status', {id: order.id});
+      if(result.data.status === 'success'){
+        setShowPDF(true);
+        setTimeout(async ()=>{
+          handleCreatePDF();
+          setCurrentOrderTab(prev=>prev-1 >=0 ? prev -1 : 0)
+          //update trạng thái table
+          await axios.put('http://localhost:4049/api/table/update-status', {table_id: order.table_id, status: 0});
+          //update trạng thái booking
+          const bookingCode = order.booking_code;
+          //order được tạo từ phiếu booking
+          if(bookingCode !== null){
+            await axios.put('http://localhost:4049/api/booking/update-status', {status:6, booking_code: bookingCode});
+          }
+          const newListOrder = await axios.get('http://localhost:4049/api/order');
+          dispatch(actions.setListOrder(newListOrder.data));
+        }, 500)
+       
+        
+      }
+      else {
+
+      }
+    }
+    catch(error)
+    {
+
+    }
+  }
+  
+  const pdfData = ()=>
+    {
+      return {
+        order_code: order.order_code, 
+        client_id :order.client_id, 
+        employee: userName, 
+        order_menu: order.order_menu, 
+        total: discount(calcMoney(order.order_menu))
+      }
+    }
+  return (
+    <Fragment>
+      <Dialog
+        open={openDialog}
+        keepMounted
+        onClose={onCloseDialog}
+        aria-describedby="alert-dialog-slide-description"
+        TransitionComponent={Transition}
+        sx={{
+          "& .MuiDialog-container": {
+            "& .MuiPaper-root": {
+              width: "100%",
+              maxWidth: "1000px", 
+              maxHeight:'100vh',
+              height:'100%' , 
+              borderRadius:0
+            },
+          },
+        }}
+        PaperProps={{sx:{position:'fixed', right:'-32px', top:'-32px'}}}
+      >
+        <DialogTitle fontSize="17px" display="flex" flexDirection="row"  alignItems="center">
+          <p style={{fontWeight:500}}>Phiếu thanh toán - {order.order_code}</p>
+          <Circle size="small" color='primary' sx={{width:'10px', height:'10px', margin:'0 10px'}}/>
+          <p style={{color:'#0066CC', fontWeight:500}}>{order.table_name} / Tầng {order.area}</p>
+        </DialogTitle>
+        <DialogContent>
+         <Grid container spacing={4} >
+          <Grid item xs={8} >
+          <TableContainer >
+            <Table aria-label="simple table">
+              <TableHead>
+                <TableRow>
+                  <TableCell  align="left">Mã món</TableCell>
+                  <TableCell align="left">Tên món</TableCell>
+                  <TableCell align="left">Số lượng</TableCell>
+                  <TableCell align="left">Thành tiền</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {order.order_menu.map((orderMenuItem, index) => (
+                  <TableRow
+                    key={index}
+                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                  >
+                    <TableCell  align="left">
+                      {orderMenuItem.order_menu_id}
+                    </TableCell>
+                    <TableCell align="left">
+                      <h4 style={{fontWeight:500}}>{orderMenuItem.order_menu_name}</h4>
+                      <p style={{fontSize:'12px', maxWidth:'200px', whiteSpace:'pre-line',
+                       whiteSpaceCollapse:'preserve-breaks', textWrap:'wrap', wordBreak:'break-word' }}>
+                        {order.order_menu_note}
+                      </p>
+                    </TableCell>
+                    <TableCell align="left">{orderMenuItem.order_menu_quantity}</TableCell>
+                    <TableCell align="left">{orderMenuItem.order_menu_price}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
           
-//           </Grid>
-//           <Grid item xs={4}>
-//             <Grid container marginBottom="10px">
-//               <Grid item xs={6} display="flex" alignItems="flex-end" marginRight="10px">
-//                 <p style={{fontSize:'14px', fontWeight:'600'}}>Tổng tiền hàng</p>
-//               </Grid>
-//               <Grid item xs={6}>
-//                 <h3 style={{textAlign:'right'}}>459,000</h3>
-//               </Grid>
-//             </Grid>
+          </Grid>
+          <Grid item xs={4}>
+            <Grid container marginBottom="10px" sx={{display:'flex', alignItems:'center', flexDirection:'row'}}>
+              <Grid item xs={6} display="flex" alignItems="flex-end" marginRight="10px">
+                <p style={{fontSize:'14px', fontWeight:'600'}}>Tổng tiền hàng</p>
+              </Grid>
+              <Grid item xs={5}>
+                <h3 style={{textAlign:'right'}}>{calcMoney(order.order_menu)}</h3>
+              </Grid>
+            </Grid>
 
-//             <Grid container marginBottom="20px">
-//               <Grid item xs={5} display="flex" alignItems="flex-end">
-//                 <p style={{fontSize:'14px', fontWeight:'600'}}>Giảm giá ({discountUnit ==='cash' ? 'VND' : '%'})</p>
-//               </Grid>
-//               <Grid item xs={7}>
-//                 <Input fullWidth={true} endAdornment={
-//                 <ToggleButtonGroup
-//                 color="primary"
-//                 value={discountUnit}
-//                 exclusive
-//                 onChange={handleChangeDiscountUnit}
-//                 aria-label="Platform"
-//                 size='small'
-//                 sx={{'button':{padding:'5px 10px'}, 'svg':{fontSize:'14px'}}}
-//               >
-//                 <ToggleButton value="percent" >
-//                   <Percent />
-//                 </ToggleButton>
-//                 <ToggleButton value="cash" >
-//                   <Payments  />
-//                 </ToggleButton>
-//               </ToggleButtonGroup>
-//                 }/>
-//               </Grid>
-//             </Grid>
+            <Grid container marginBottom="20px">
+              <Grid item xs={5} display="flex" alignItems="flex-end">
+                <p style={{fontSize:'14px', fontWeight:'600'}}>Giảm giá ({discountUnit ==='cash' ? 'VND' : '%'})</p>
+              </Grid>
+              <Grid item xs={7}>
+                <Input fullWidth={true} onChange={e=>setValueMoney(e.target.value)}endAdornment={
+                <ToggleButtonGroup
+                color="primary"
+                value={discountUnit}
+                exclusive
+                onChange={handleChangeDiscountUnit}
+                aria-label="Platform"
+                size='small'
+                sx={{'button':{padding:'5px 10px'}, 'svg':{fontSize:'14px'}}}
+              >
+                <ToggleButton value="percent" >
+                  <Percent />
+                </ToggleButton>
+                <ToggleButton value="cash" >
+                  <Payments  />
+                </ToggleButton>
+              </ToggleButtonGroup>
+                }/>
+              </Grid>
+            </Grid>
 
-//             <Grid container marginBottom="20px">
-//               <Grid item xs={6} display="flex" alignItems="flex-end">
-//                 <p style={{fontSize:'14px', fontWeight:'600'}}>Khách cần trả</p>
-//               </Grid>
-//               <Grid item xs={6}>
-//                 <h3 style={{textAlign:'right'}}>459,000</h3>
-//               </Grid>
-//             </Grid>
+            <Grid container marginBottom="20px">
+              <Grid item xs={6} display="flex" alignItems="flex-end">
+                <p style={{fontSize:'14px', fontWeight:'600'}}>Khách cần trả</p>
+              </Grid>
+              <Grid item xs={6}>
+                <h3 style={{textAlign:'right'}}>{discount(calcMoney(order.order_menu))}</h3>
+              </Grid>
+            </Grid>
 
-//             <Grid container >
-//               <Grid item xs={12} display="flex" alignItems="flex-end" justifyContent="center">
-//                 <Button variant="contained" color="success"  onClick={handlePayment}>
-//                   <MonetizationOnOutlined sx={{marginRight:'10px'}}/>
-//                   Thanh Toán
-//                   </Button>
-//               </Grid>
+            <Grid container marginBottom="20px">
+            <Grid item xs={4} display="flex" alignItems="center">
+              <p style={{fontSize:'14px', fontWeight:'600'}}>Thanh toán</p>
+            </Grid>
+              <Grid item xs={8} display="flex" alignItems="flex-end">
+                  <Select
+                  value={typePayment}
+                  onChange={handleChangeTypePayment}
+                  displayEmpty
+                  inputProps={{ 'aria-label': 'Without label' }}
+                  fullWidth={true} 
+                  size="small"
+                  sx={{'.MuiSelect-select':{display:'flex', alignItems:'center'}, fontSize:'14px'}}
+                >
+                  <MenuItem value="" sx={{fontSize:'14px'}}>
+                    <em>-- Thanh Toán -- </em>
+                  </MenuItem>
+                  <MenuItem value="cash" sx={{fontSize:'14px'}}>Tiền mặt</MenuItem>
+                  <MenuItem value="momo" sx={{fontSize:'14px'}}>
+                    <img src={zlpay} alt="" width="25px" style={{marginRight:'10px'}}/>
+                    Zalo - Pay
+                    </MenuItem>
+                </Select>
+              </Grid>
              
-//             </Grid>
+            </Grid>
 
-//           </Grid>
+            <Grid container >
+              <Grid item xs={12} display="flex" alignItems="flex-end" justifyContent="center">
+                <Button variant="contained" color="success"  onClick={handePrintPDF}>
+                  <MonetizationOnOutlined sx={{marginRight:'10px'}}/>
+                  Thanh Toán
+                  </Button>
+              </Grid>
+             
+            </Grid>
 
-//          </Grid>
-//         </DialogContent>
-//       </Dialog>
-//       <PaymentPDF ref={pdfRef}/>
-//     </Fragment>
-//   )
-// }
+          </Grid>
+
+         </Grid>
+        </DialogContent>
+      </Dialog>
+      {showPDF && <PaymentPDF ref={pdfRef} data={pdfData()}/>}
+      {showAlert && <CustomAlert alert={alertMessage} open={showAlert} onClose={()=>setShowAlert(false)}/>}
+    </Fragment>
+  )
+})
 export default Cashier;

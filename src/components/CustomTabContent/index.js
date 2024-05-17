@@ -21,37 +21,22 @@ function CustomTabContent({order, currentOrderTab, id, onToggleNoteDialog}) {
         order_menu_id:null, 
         order_menu_quantity : null 
     })
-    //Xử lý 2 case 
-    /*
-     - Case 1: Chọn món trước- chọn bàn sau 
-            - Sau khi chọn món xong (sl món > 0) - update status của bàn
-
-     - Case 2: Chọn bàn trước - chọn món sau 
-            - sau khi chọn bàn xong - chưa update status - ktra xem đã chọn món chưa - nếu rồi thì mới update status 
-     */
+   
     useEffect(()=>{
-        if(currentSelectedClient !== null){
-            console.log(listOrder)
-            console.log(listOrder[currentOrderTab]);
+        if(currentSelectedClient !== null && currentSelectedClient.client_id !== listOrder[currentOrderTab].client_id){
             listOrder[currentOrderTab].client_id = currentSelectedClient.client_id;
             listOrder[currentOrderTab].full_name = currentSelectedClient.full_name;
             listOrder[currentOrderTab].client_code = currentSelectedClient.client_code;
             listOrder[currentOrderTab].phone_number = currentSelectedClient.phone_number;
             dispatch(actions.setListOrder(listOrder));
-            
-        }
-        if(order.order_menu.length > 0){
-            //nếu thêm menu lần đầu thì insert new order 
-            if(order.id === null)
-                axios.post(`http://localhost:4049/api/order/new`, order)
-            //nếu thêm menu lần thứ n hay update số lượng mỗi món, update order
-            else 
-                axios.put('http://localhost:4049/api/order/update-other', order)
-        }
+            if(order.order_menu.length > 0){
+                axios.put('http://localhost:4049/api/order/update-other', listOrder[currentOrderTab])
+            }
 
+        }
+        
     }, [order.order_menu.length, currentSelectedClient])
     useEffect(()=>{
-    console.log(currentSelectedClient)
         if(order.client_id === null)
             setCurrentSelectedCient(null);
         else 
@@ -97,6 +82,8 @@ function CustomTabContent({order, currentOrderTab, id, onToggleNoteDialog}) {
         updateListOrderMenu[index] = {...updateListOrderMenu[index], order_menu_quantity: quantity}
         setListOrderMenu(updateListOrderMenu)
         setInitUpdateQuantity(prev=>({...prev, order_menu_id:order_menu_id,order_menu_quantity: quantity  }))
+        listOrder[currentOrderTab] = {...listOrder[currentOrderTab], order_menu:updateListOrderMenu};
+        dispatch(actions.setListOrder(listOrder));
     }
     const handleDecreaseQuantity = (index,order_menu_id,  quantity)=>{
         const updateListOrderMenu = [...listOrderMenu];
@@ -125,7 +112,6 @@ function CustomTabContent({order, currentOrderTab, id, onToggleNoteDialog}) {
     }
     return ( 
         <>
-
             <TabContent value={currentOrderTab} index={id} id={`order-tab-${id}`}>
             <Stack>
                 <Grid container sx={{display:'flex',alignItems:'center'}}>
@@ -161,7 +147,7 @@ function CustomTabContent({order, currentOrderTab, id, onToggleNoteDialog}) {
                             paddingRight:'7px', fontSize:'14px', width:'100%', 'input':{padding:'9px 0'}}} 
                             startAdornment={<Search color='primary' fontSize='small' sx={{marginRight:'10px'}}/>} 
                             endAdornment={<IconButton sx={{backgroundColor:"#fff"}} size="small" onClick={()=>setNewClientDialog(true)}><Add fontSize='small'/></IconButton>}
-                            onChange={handleSearch} placeholder='Tìm khách hàng'/>
+                            onChange={handleSearch} placeholder='Tìm khách hàng' required/>
                          )
                     }
                     {searchResult.length > 0 && searchResult.map((client, index)=>(

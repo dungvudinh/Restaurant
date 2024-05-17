@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import axios from 'axios';
 import classNames from "classnames/bind";
@@ -7,19 +8,40 @@ import Sidebar from "../../components/Sidebar";
 import DataTable  from '../../components/DataTable';
 import { styled } from '@mui/material/styles';
 import { pink } from '@mui/material/colors';
-import {AccountCircleOutlined, ArrowForward, Check, EditCalendar, LogoutOutlined, NoteAltOutlined, NotificationsActiveOutlined} from '@mui/icons-material';
+import {AccountCircleOutlined, ArrowForward, Check, EditCalendar, EscalatorWarning, FamilyRestroom, LogoutOutlined, NoteAltOutlined, NotificationsActiveOutlined} from '@mui/icons-material';
 import {Grid,Box, FormGroup, FormControlLabel, Checkbox, Button, Stack, Menu, MenuItem, Badge, ListItemIcon, ListItemText, Typography, IconButton} from '@mui/material';
 import CustomizedDialog from "../../components/Dialog";
 import * as XLSX from 'xlsx/xlsx.mjs';
+import {saveAs} from 'file-saver'
+import{ actions, useStore} from '../../store';
+import CustomAlert from "../../components/CustomAlert";
+import {io} from 'socket.io-client';
+const socket = io('http://localhost:4049')
+// const socket = io.connect('http://localhost:4049')
 const cx = classNames.bind(styles);
-function createData(  id, timein, client, phone, quantity, room, status, note) {
-    return { id, timein, client, phone, quantity, room, status, note };
+function createData( booking_code, client_name, email, timein, period, client_quantity, adult_quantity, children_quantity,table_name, booking_status, employee, note ) {
+    return { 
+        'Mã đặt bàn' : booking_code,
+        'Khách hàng': client_name,
+        'Email': email,
+        'Giờ đến': timein,
+        'Thời gian': period, 
+        'Tổng số khách': client_quantity,
+        'Tổng số khách(người lớn)': adult_quantity,
+        'Tổng số khách(trẻ em)':children_quantity,
+        'Phòng/bàn':table_name,
+        'Trạng thái':booking_status, 
+        'Nhân viên' : employee, 
+        'Ghi chú' : note
+    };
   }
   
-  const rows = [
-    createData('DB001','20/04/2024 8:30', 'Vũ Đình Dũng', '0355969145', 4, 6,1, 'Khách đến muộn 30p'),
-    createData('DB002', '20/04/2024 8:30', 'Lê Tuấn Kiệt','0355969145', 4, 6, 1,'Khách đến muộn 30p'),
-  ];
+
+  const excelData = (listBooking)=>{
+    return listBooking.map(booking=>createData(booking.booking_code,booking.full_name, booking.email ? booking.email: '', 
+    booking.booking_time, booking.period_time, booking.client_quantity, booking.adult_quantity, booking.children_quantity,
+     booking.table[0].name, booking.booking_status, 'Vũ Đình Dũng', booking.booking_note))
+  }
   const StyledBadge = styled(Badge)(({ theme }) => ({
     '& .MuiBadge-badge': {
       right: -3,
@@ -28,19 +50,66 @@ function createData(  id, timein, client, phone, quantity, room, status, note) {
       padding: '0 4px',
     },
   }));
+
+  function generateRandomCode(id) {
+    let prefix = "KH"; // Tiền tố cho mã hóa đơn
+    let invoiceCode = String(id).padStart(6, '0');
+    return `KH${invoiceCode}`;
+  }
+  function generateRandomBookingCode(id) {
+    let invoiceCode = String(id).padStart(6, '0');
+    return `DB${invoiceCode}`;
+  }
 function Reception() {
     const [openDialog, setOpenDialog] = useState(false);
     const [anchorProfileEl, setAnchorProfileEl] = useState(null);
     const [anchorNotiEl, setAnchorNotiEl] = useState(null);
     const openProfile = Boolean (anchorProfileEl);
     const openNoti = Boolean (anchorNotiEl);
+    const [auth, setAuth] = useState(false);
+    const [name, setName] = useState(null);
+    const [state, dispatch] = useStore();
+    const {listBooking} = state;
+    const [showAlert, setShowAlert] = useState();
+    const [alertMessage, setAlertMessage] = useState({});
+    const [listNoti, setListNoti] = useState([]);
+    const navigate = useNavigate();
+    const {timeline, status} = state;
     const [bookingStatus, setBookingStatus] = useState({
         waiting: true, 
         sorted:true, 
         accepted: true, 
         canceled: false
     })
-  
+    const instance = axios.create({
+        baseURL: 'http://localhost:4049/api', // Change this to your backend URL
+        withCredentials:true, 
+        
+        headers: {
+            "content-type": "application/json"
+          },
+        
+      });
+    useEffect(()=>{
+        instance.get('/reception')
+        .then(res=>{
+            if(res.data.status === 'success'){
+                setAuth(true)
+                setName(res.data.full_name);
+            }
+            else {
+                setAuth(false)
+                navigate('/login');
+            }
+        })
+    }, [])
+    useEffect(()=>{
+        socket.on('notification', (data)=>{
+            console.log(listNoti)
+            // console.log(data)
+            setListNoti([...listNoti, data])
+        });
+    },[socket, listNoti.length])
     const handleClickProfile = (event) => {
         setAnchorProfileEl(event.currentTarget);
     };
@@ -57,10 +126,35 @@ function Reception() {
     const handleCloseDialog = ()=>setOpenDialog(false);
     const handleExportFile = ()=>
     {
-        var wb = XLSX.utils.book_new();
-        var ws = XLSX.utils.json_to_sheet(rows);
-        XLSX.utils.book_append_sheet(wb,ws,'BaoCaoDatBan');
-        XLSX.writeFile(wb, "baoCaoDatBan.xlsx");
+        var data = excelData(listBooking)
+        const worksheet = XLSX.utils.json_to_sheet(data);
+
+        // Apply cell styles
+        const headerStyle = {
+          font: { bold: true },
+          alignment: { horizontal: 'center' },
+          fill: { bgColor: { indexed: 64 }, fgColor: { rgb: 'FFFF00' } }, // Yellow background color
+        };
+      
+        // Apply header styles
+        Object.keys(data[0]).forEach((key, index) => {
+          const cellAddress = XLSX.utils.encode_cell({ r: 0, c: index });
+          worksheet[cellAddress].s = headerStyle;
+        });
+      
+        // Create a new workbook and add the worksheet
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'BaoCaoDatBan');
+      
+        // Convert the workbook to Excel file buffer
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      
+        // Convert Excel file buffer to Blob
+        const fileData = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
+      
+        // Save the Blob as an Excel file
+        saveAs(fileData, 'baoCaoDatBan' + '.xlsx');
+        
     }
     const handleChangeBookingStatus = (e)=>{
         const {name, checked} = e.target;
@@ -69,6 +163,48 @@ function Reception() {
             [name] : checked
         })
         
+    }
+    const handleLogout = ()=>{
+        instance.get('/logout')
+        .then(res=>{
+            navigate('/login')
+        })
+    }
+    const handleAddNewBooking = async (data, index)=>{
+        try 
+        {
+            //insert client 
+            listNoti.splice(index, 1);
+            setListNoti(listNoti);
+            
+            const res = await axios.get('http://localhost:4049/api/client/last_id');
+            const newClientCode = generateRandomCode( res.data.id +1);
+            const newClient = {full_name:data.full_name, phone_number: data.phone_number, client_code:newClientCode};
+            const clientId = await axios.post('http://localhost:4049/api/client/new-from-client', newClient)
+            const bookingId = await axios.get('http://localhost:4049/api/booking/last_id');
+            const  newBookingCode = generateRandomBookingCode(bookingId.data.id +1);
+            const newBooking = {booking_time: data.booking_time, booking_date: data.booking_date,adult_quantity: data.adult_quantity,
+                 children_quantity: data.children_quantity, period_time:data.period_time, time_unit:data.time_unit,
+                booking_code:newBookingCode, note:data.note, client_id: clientId.data.data}
+            const result2 = await axios.post('http://localhost:4049/api/booking/new-from-client', newBooking)
+            const newListBooking = await axios.get('http://localhost:4049/api/booking', {
+                params:{
+                    status, 
+                    timeline
+                }
+            });
+            if(result2.data.status === 'success')
+            {
+                dispatch(actions.setListBooking(newListBooking.data));
+            }
+            setAlertMessage({status:result2.data.status, message: result2.data.message});
+            setShowAlert(true);
+            //insert booking 
+        }
+        catch(error){
+            console.log(error)
+        }
+
     }
     return ( 
         <Fragment>
@@ -89,7 +225,7 @@ function Reception() {
                                     onClick={handleClickNoti}
                                     sx={{color:'#fff'}}
                                 >
-                                    <StyledBadge badgeContent={4} color="success">
+                                    <StyledBadge badgeContent={listNoti.length} color="success">
                                         <NotificationsActiveOutlined fontSize="medium"/>
                                     </StyledBadge>
                                 </Button>
@@ -126,30 +262,30 @@ function Reception() {
                                     transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                                     anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
                                 >
-                                    <MenuItem sx={{fontSize:14 , minWidth:100}}>
-                                        <ListItemIcon>
-                                            <AccountCircleOutlined sx={{marginRight:'5px'}}/>
-                                        </ListItemIcon>
-                                        <ListItemText sx={{'span':{fontSize:14}}} primary="Lê Tuấn Kiệt" secondary="0869370492"/>
-                                        <ListItemText sx={{'span':{fontSize:11}}} primary={<span>Giờ đến: 20:00</span>} secondary={<span>Thời lượng: 1 giờ</span>}/>
-                                        <Typography variant="body2" color="text.secondary">
-                                            <IconButton size="small">
-                                                <Check  fontSize="small"/>
-                                            </IconButton>
-                                        </Typography>
+                                    {listNoti.length > 0 ? 
+                                    (
+                                        listNoti.map((notiItem, index)=>(
+                                            <MenuItem sx={{fontSize:14 , minWidth:100}} key={index} onClick={()=>handleAddNewBooking(notiItem, index)}>
+                                                <ListItemIcon>
+                                                    <AccountCircleOutlined sx={{marginRight:'5px'}}/>
+                                                </ListItemIcon>
+                                                <ListItemText sx={{'span':{fontSize:14}, maxWidth:'130px', whiteSpace:'nowrap',overflow:'hidden', textOverflow:'ellipsis'}} primary={notiItem.full_name} secondary={notiItem.phone_number}/>
+                                                <ListItemText sx={{'span':{fontSize:11}, marginLeft:'10px'}} primary={<span>{notiItem.booking_time} - {notiItem.booking_date} </span>}
+                                                 secondary={<span ><EscalatorWarning fontSize="small"/> {notiItem.adult_quantity} / <FamilyRestroom fontSize="small" sx={{marginLeft:'5px'}}/> {notiItem.children_quantity} (1 giờ)</span>}/>
+                                                {/* <Typography variant="body2" color="text.secondary">
+                                                    <IconButton size="small">
+                                                        <Check  fontSize="small"/>
+                                                    </IconButton>
+                                                </Typography> */}
+                                            </MenuItem>
+                                        ))
+                                    )
+                                    :
+                                    <MenuItem sx={{justifyContent:'center'}}>
+                                        <span style={{fontSize:'14px', textAlign:'center'}}>Không có thông báo mới</span>
                                     </MenuItem>
-                                    <MenuItem sx={{fontSize:14 , minWidth:100}}>
-                                        <ListItemIcon>
-                                            <AccountCircleOutlined sx={{marginRight:'5px'}}/>
-                                        </ListItemIcon>
-                                        <ListItemText sx={{'span':{fontSize:14}}} primary="Lê Tuấn Kiệt" secondary="0869370492"/>
-                                        <ListItemText sx={{'span':{fontSize:11}}} primary={<span>Giờ đến: 20:00</span>} secondary={<span>Thời lượng: 1 giờ</span>}/>
-                                        <Typography variant="body2" color="text.secondary">
-                                            <IconButton size="small">
-                                                <Check  fontSize="small"/>
-                                            </IconButton>
-                                        </Typography>
-                                    </MenuItem>
+                                    }
+                                    
                                 </Menu>
                              </Stack>
                                 <Stack>
@@ -161,7 +297,7 @@ function Reception() {
                                     onClick={handleClickProfile}
                                     sx={{color:'#fff'}}
                                 >
-                                    <span style={{marginRight:'10px', fontSize:12}}>Vũ Đình Dũng</span>
+                                    <span style={{marginRight:'10px', fontSize:12}}>{name !== null && name}</span>
                                     <AccountCircleOutlined fontSize="medium"/>
                                 </Button>
                                     <Menu
@@ -175,17 +311,13 @@ function Reception() {
                                         }}
                                         sx={{'.MuiList-root ':{fontSize:'10px !important'}}}
                                     >
-                                        <MenuItem sx={{fontSize:14}}>
-                                            <Link to="/cashier" style={{display:'flex', alignItems:'center', color:'#111'}}>
+                                        <MenuItem sx={{fontSize:14}} onClick={()=>navigate('/cashier')}>
                                                 <NoteAltOutlined  fontSize="small" sx={{marginRight:'5px'}}/>
                                                 Thu Ngân
-                                            </Link>
                                         </MenuItem>
-                                        <MenuItem sx={{fontSize:14}}>
-                                            <Link to="/logout" style={{display:'flex', alignItems:'center', color:'#111'}}>
-                                                <LogoutOutlined fontSize="small" sx={{marginRight:'5px'}}/>
+                                        <MenuItem sx={{fontSize:14}} onClick={handleLogout}>
+                                            <LogoutOutlined fontSize="small" sx={{marginRight:'5px'}}/>
                                             Đăng Xuất
-                                            </Link>
                                         </MenuItem>
                                     </Menu>
                                 </Stack>
@@ -226,6 +358,7 @@ function Reception() {
                 </Grid>
             </Box>
             <CustomizedDialog onOpenDialog={handleOpenDialog} onCloseDialog={handleCloseDialog} isOpenDialog={openDialog}/> 
+            {showAlert && <CustomAlert alert={alertMessage} open={showAlert} onClose={()=>setShowAlert(false)}/>}
         </Fragment>
      );
 }

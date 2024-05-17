@@ -42,6 +42,7 @@ function CustomizedDialog({onCloseDialog, isOpenDialog , data}) {
     const [isLoading, setLoading]= useState(false);
     const [showAlert, setShowAlert] = useState(false);
     const [alertMessage, setAlertMessage] = useState({});
+    const {status, timeline} = state;
     const [dateTimeFormat, setDateTimeFormat] = useState(()=>{
         return parse(`${data.booking_date} ${data.booking_time}`, 'yyyy-MM-dd HH:mm:ss', new Date());
     })
@@ -66,7 +67,13 @@ function CustomizedDialog({onCloseDialog, isOpenDialog , data}) {
             try 
             {
                 const result = await axios.delete(`http://localhost:4049/api/booking/delete`, {data:{booking_code: data.booking_code}});
-                const newListBooking = await axios.get('http://localhost:4049/api/booking');
+                const newListBooking = await axios.get('http://localhost:4049/api/booking', {
+                    params:{
+                        status, 
+                        timeline
+                    }
+                });
+                console.log(newListBooking)
                 if(result.data.status === 'success')
                     dispatch(actions.setListBooking(newListBooking.data));
                 setAlertMessage({status:result.data.status, message: result.data.message});
@@ -93,7 +100,12 @@ function CustomizedDialog({onCloseDialog, isOpenDialog , data}) {
         {
             console.log(newBooking);
             const result = await axios.put(`http://localhost:4049/api/booking/update`, newBooking);
-            const newListBooking = await axios.get('http://localhost:4049/api/booking');
+            const newListBooking = await axios.get('http://localhost:4049/api/booking', {
+                params:{
+                    status, 
+                    timeline
+                }
+            });
             if(result.data.status === 'success')
                 dispatch(actions.setListBooking(newListBooking.data));
             setAlertMessage({status:result.data.status, message: result.data.message});

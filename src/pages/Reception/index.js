@@ -8,7 +8,7 @@ import Sidebar from "../../components/Sidebar";
 import DataTable  from '../../components/DataTable';
 import { styled } from '@mui/material/styles';
 import { pink } from '@mui/material/colors';
-import {AccountCircleOutlined, ArrowForward, Check, EditCalendar, EscalatorWarning, FamilyRestroom, LogoutOutlined, NoteAltOutlined, NotificationsActiveOutlined} from '@mui/icons-material';
+import {AccountCircleOutlined, ArrowForward, ChangeCircle, Check, EditCalendar, EscalatorWarning, FamilyRestroom, LogoutOutlined, NoteAltOutlined, NotificationsActiveOutlined} from '@mui/icons-material';
 import {Grid,Box, FormGroup, FormControlLabel, Checkbox, Button, Stack, Menu, MenuItem, Badge, ListItemIcon, ListItemText, Typography, IconButton} from '@mui/material';
 import CustomizedDialog from "../../components/Dialog";
 import * as XLSX from 'xlsx/xlsx.mjs';
@@ -67,7 +67,11 @@ function Reception() {
     const openProfile = Boolean (anchorProfileEl);
     const openNoti = Boolean (anchorNotiEl);
     const [auth, setAuth] = useState(false);
-    const [name, setName] = useState(null);
+    const [infoUser, setInfoUser] = useState({
+        full_name: '', 
+        password: '', 
+        phone_number: ''
+    });
     const [state, dispatch] = useStore();
     const {listBooking} = state;
     const [showAlert, setShowAlert] = useState();
@@ -95,7 +99,8 @@ function Reception() {
         .then(res=>{
             if(res.data.status === 'success'){
                 setAuth(true)
-                setName(res.data.full_name);
+                console.log(res);
+                setInfoUser(res.data.info_user)
             }
             else {
                 setAuth(false)
@@ -206,6 +211,9 @@ function Reception() {
         }
 
     }
+    const handleChangePassword = ()=>{
+        navigate('/change-password');
+    }
     return ( 
         <Fragment>
 
@@ -297,7 +305,7 @@ function Reception() {
                                     onClick={handleClickProfile}
                                     sx={{color:'#fff'}}
                                 >
-                                    <span style={{marginRight:'10px', fontSize:12}}>{name !== null && name}</span>
+                                    <span style={{marginRight:'10px', fontSize:12}}>{infoUser && infoUser.full_name}</span>
                                     <AccountCircleOutlined fontSize="medium"/>
                                 </Button>
                                     <Menu
@@ -314,6 +322,10 @@ function Reception() {
                                         <MenuItem sx={{fontSize:14}} onClick={()=>navigate('/cashier')}>
                                                 <NoteAltOutlined  fontSize="small" sx={{marginRight:'5px'}}/>
                                                 Thu Ngân
+                                        </MenuItem>
+                                        <MenuItem sx={{fontSize:14}} onClick={handleChangePassword}>
+                                            <ChangeCircle fontSize="small" sx={{marginRight:'5px'}}/>
+                                            Đổi mật khẩu
                                         </MenuItem>
                                         <MenuItem sx={{fontSize:14}} onClick={handleLogout}>
                                             <LogoutOutlined fontSize="small" sx={{marginRight:'5px'}}/>

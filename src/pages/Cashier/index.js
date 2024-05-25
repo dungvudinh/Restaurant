@@ -84,7 +84,11 @@ function Cashier() {
       table_name: '', 
       note:''
     })
-    const [userName, setUserName] = useState(null);
+    const [infoUser, setInfoUser] = useState({
+      full_name: '', 
+      password: '', 
+      phone_number: ''
+  });
     const instance = axios.create({
       baseURL: 'http://localhost:4049/api', // Change this to your backend URL
       withCredentials:true, 
@@ -98,7 +102,7 @@ function Cashier() {
         instance.get('http://localhost:4049/api/cashier')
         .then(res=>{
             if(res.data.status === 'success'){
-                setUserName(res.data.full_name);
+              setInfoUser(res.data.info_user)
             }
             else {
                 navigate('/login');
@@ -269,7 +273,6 @@ function Cashier() {
         else{
           // không cho phép đổi bàn khi đã chọn món
           if(table.status !== 1){
-            console.log("CURRENT ORDER TAB: ", currentOrderTab)
             // console.log(listOrder[selectTabIndex])
             if(listOrder[currentOrderTab].order_menu.length > 0){
               if(listOrder[currentOrderTab].table_id !== null){
@@ -386,7 +389,7 @@ function Cashier() {
                   onClick={handleClick}
                   sx={{color:'#fff', display:'flex', alignItems:'center', position:'absolute !important', right:'10px', top:'5px'}}
                 >
-                  <span style={{fontSize:'12px'}}>{userName}</span>
+                  <span style={{fontSize:'12px'}}>{infoUser.full_name}</span>
                   <MenuOutlined size="small" sx={{marginLeft:'10px'}}/>
             </Button>
             <Menu
@@ -585,7 +588,7 @@ function Cashier() {
                                 defaultValue={1}
                               >
                                 <MenuItem value={1} sx={{fontSize:'13px'}}>
-                                  <em>{userName}</em>
+                                  <em>{infoUser.full_name}</em>
                                 </MenuItem>
                                
                                 
@@ -632,7 +635,7 @@ function Cashier() {
           <NewClientDialog openClientDialog={newClientDialog} onCloseClientDialog={()=>setNewClientDialog(false)}/>
           {showAlert && <CustomAlert alert={alertMessage} open={showAlert} onClose={()=>setShowAlert(false)}/>}
           
-          {listOrder[currentOrderTab] && <PaymentDialog openDialog={openPaymentDialog} onCloseDialog={()=>setOpenPaymentDialog(false)} order={listOrder[currentOrderTab]} userName={userName} setCurrentOrderTab={setCurrentOrderTab}/>}
+          {listOrder[currentOrderTab] && <PaymentDialog openDialog={openPaymentDialog} onCloseDialog={()=>setOpenPaymentDialog(false)} order={listOrder[currentOrderTab]} userName={infoUser.full_name} setCurrentOrderTab={setCurrentOrderTab}/>}
       </Fragment>
      );
 }

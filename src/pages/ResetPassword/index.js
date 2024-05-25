@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import styles from './ForgotPassword.module.scss';
+import styles from './ResetPassword.module.scss';
 import classNames from 'classnames/bind';
 import { TextField, Button } from '@mui/material';
 import axios from 'axios';
@@ -8,7 +8,7 @@ import CustomAlert from '../../components/CustomAlert';
 import OtpInput from 'react-otp-input';
 const cx = classNames.bind(styles);
 
-function ForgotPassword() {
+function ResetPassword() {
     const [accountInfo, setAccountInfo] = useState({
         phone_number: '', 
         password: ''
@@ -51,35 +51,24 @@ function ForgotPassword() {
             <div className={cx('overlay')} style={{backgroundImage:`url(http://localhost:4049/img/login-bg.jpg)`}}></div>
             <div className={cx('signup-form')}>	
             <div action="" method="post" className={cx('login-form')}>
-                <h2>Quên Mật Khẩu</h2>
+                <h2>Đặt Lại Mật Khẩu</h2>
                 <div className={cx('form-group')}>
                     <div className={cx('input-group')}>
-                        <TextField id="outlined-basic" label="Số điện thoại" variant="standard" fullWidth={true} size='small' name='phone_number' type="number"
+                        <TextField id="outlined-basic" label="Mật khẩu mới" variant="standard" fullWidth={true} size='small' name='phone_number' type="password"
                         onChange={e=>setAccountInfo({...accountInfo, phone_number: e.target.value})}/>
                     </div>
                 </div>
-                {/* <div className={cx('form-group')}>
+                <div className={cx('form-group')}>
                     <div className={cx('input-group')}>
-                        <TextField id="outlined-basic" label="Mật khẩu" variant="standard" fullWidth={true} size='small' name='password' type='password'
+                        <TextField id="outlined-basic" label="Nhập lại mật khẩu mới" variant="standard" fullWidth={true} size='small' name='password' type='password'
                         onChange={e=>setAccountInfo({...accountInfo, password: e.target.value})}/>
                     </div>
-                </div> */}
-                <div className={cx('form-group')}>
-                    <span>Nhập mã OTP</span>
-                    <OtpInput
-                        // value={otp}
-                        // onChange={setOtp}
-                        numInputs={6}
-                        renderSeparator={<span>-</span>}
-                        containerStyle={{display:'flex', justifyContent:'space-between', marginTop:'10px'}}
-                        inputStyle={{border:'none', border:'1px solid #666', width:'40px', height:'42px', borderRadius:'5px'}}
-                        renderInput={(props) => <input {...props}  inputType="number" shouldAutoFocus={true}/>}
-                    />
                 </div>
+                
                         
                 <div className={cx('form-group')}>
                     <Button variant="contained" color="success" fullWidth={true} size='small' onClick={handleLogin}>
-                    Gửi mã 
+                    Đặt lại mật khẩu 
                     </Button>
                 </div>
                 <p style={{textAlign:'center'}}>By clicking the Sign Up button, you agree to our <br/><a href="#">Terms &amp; Conditions</a>, and <a href="#">Privacy Policy</a>.</p>
@@ -90,4 +79,4 @@ function ForgotPassword() {
      );
 }
 
-export default ForgotPassword;
+export default ResetPassword;

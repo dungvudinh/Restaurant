@@ -133,31 +133,19 @@ function Reception() {
     {
         var data = excelData(listBooking)
         const worksheet = XLSX.utils.json_to_sheet(data);
-
-        // Apply cell styles
         const headerStyle = {
           font: { bold: true },
           alignment: { horizontal: 'center' },
           fill: { bgColor: { indexed: 64 }, fgColor: { rgb: 'FFFF00' } }, // Yellow background color
         };
-      
-        // Apply header styles
         Object.keys(data[0]).forEach((key, index) => {
           const cellAddress = XLSX.utils.encode_cell({ r: 0, c: index });
           worksheet[cellAddress].s = headerStyle;
         });
-      
-        // Create a new workbook and add the worksheet
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'BaoCaoDatBan');
-      
-        // Convert the workbook to Excel file buffer
         const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      
-        // Convert Excel file buffer to Blob
         const fileData = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
-      
-        // Save the Blob as an Excel file
         saveAs(fileData, 'baoCaoDatBan' + '.xlsx');
         
     }

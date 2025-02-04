@@ -47,3 +47,8 @@ This is the Staff Page that allows the receptionist to receive online table rese
 
 
 ![](./src/assets/readMeImg/img8.PNG)
+
+
+- #### After payment, the invoice will be printed.
+
+![](./src/assets/readMeImg/img9.PNG)

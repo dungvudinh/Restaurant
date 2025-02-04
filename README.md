@@ -1,70 +1,49 @@
-# Getting Started with Create React App
+# Introduce 
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the Staff Page that allows the receptionist to receive online table reservations from customers. In addition, the staff can directly book tables for customers when they come to the restaurant. Here, customers can order food and pay through many different forms.
 
-## Available Scripts
+# Overview 
+ 
+ #### Reception Page
 
-In the project directory, you can run:
+ This page allows the front desk to take online reservations from customers or the front desk can reserve a table for customers when they come to the restaurant.
+- #### Receptionist takes table reservations from customers
 
-### `npm start`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+ ![](./src/assets/readMeImg/img1.PNG)
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+ - #### Receptionist creates table reservation for customer
 
-### `npm test`
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+![](./src/assets/readMeImg/img2.PNG)
 
-### `npm run build`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+![](./src/assets/readMeImg/img3.PNG)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- #### Receptionist can filter by reservation code, table name, table status
 
-### `npm run eject`
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+![](./src/assets/readMeImg/img4.PNG)
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+- #### Reception can also export excel 
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+![](./src/assets/readMeImg/img5.PNG)
 
-## Learn More
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- #### After successfully arranging the table, the customer's table order will be sent to the cashier. Here, the customer can choose dishes, or change tables,...
 
-### Code Splitting
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+![](./src/assets/readMeImg/img6.PNG)
 
-### Analyzing the Bundle Size
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- #### And finally payment, customers can choose a variety of payment methods. Here customers choose to pay via Zalo pay
 
-### Making a Progressive Web App
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+![](./src/assets/readMeImg/img7.PNG)
 
-### Advanced Configuration
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
 
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+![](./src/assets/readMeImg/img8.PNG)
